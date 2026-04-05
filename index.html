@@ -135,7 +135,7 @@
 
   .seat-numbers {
     display: flex; justify-content: center; gap: 4px;
-    margin-bottom: 12px; font-size: 11px;
+    margin-bottom: 15px; font-size: 11px;
   }
   .seat-num {
     background: #f0f0f0; color: var(--text-mid);
@@ -353,7 +353,7 @@
   }
   .photo-ring-wrap {
     position: relative; width: 97px; height: 97px;
-    margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 13px; display: flex; align-items: center; justify-content: center;
     isolation: isolate;
     overflow: visible;
   }
@@ -1003,28 +1003,43 @@ function refreshSessionSelects(si) {
 }
 
 function getHolidayNames() {
-  const holiday = document.getElementById('adm-holiday')?.value || state.holiday || '';
-  const longHoliday = document.getElementById('adm-longholiday')?.value || state.longholiday || '';
+  // DOM이 있으면 DOM 우선, 없으면 state에서 읽기
+  const hEl = document.getElementById('adm-holiday');
+  const lhEl = document.getElementById('adm-longholiday');
+  const holiday = (hEl ? hEl.value : null) ?? state.holiday ?? '';
+  const longHoliday = (lhEl ? lhEl.value : null) ?? state.longholiday ?? '';
+
   const baseNames = new Set();
-  // "이름(숫자)" 또는 "이름, 이름" 형식 파싱 → 순수 이름(확장자 없이)
   [holiday, longHoliday].forEach(str => {
+    if (!str) return;
     str.split(/[,，\s]+/).forEach(part => {
       const clean = part.replace(/\(\d+\)/, '').trim();
       if (clean) baseNames.add(clean);
     });
   });
-  // memberStore 키(파일명)도 포함: stripExt(key)가 baseNames에 있으면 파일명도 excluded에 추가
+
+  // memberStore 파일명과 매칭: 정확히 일치 or 파일명이 baseNames 이름을 포함
   const names = new Set(baseNames);
   Object.keys(memberStore).forEach(filename => {
-    if (baseNames.has(stripExt(filename))) {
-      names.add(filename);
-      names.add(stripExt(filename));
+    const ext = stripExt(filename);
+    // 정확히 일치하거나, 파일명(확장자 제거)이 baseNames의 어떤 이름과 일치
+    for (const base of baseNames) {
+      if (ext === base || ext.includes(base) || base.includes(ext)) {
+        names.add(filename);
+        names.add(ext);
+        break;
+      }
     }
   });
   return names;
 }
 
 function refreshAllSelects() {
+  // DOM 값을 state에 먼저 동기화
+  const hEl = document.getElementById('adm-holiday');
+  const lhEl = document.getElementById('adm-longholiday');
+  if (hEl) state.holiday = hEl.value;
+  if (lhEl) state.longholiday = lhEl.value;
   state.sessions.forEach((_, si) => refreshSessionSelects(si));
 }
 function updateNote(si, ni, key, val) {
