@@ -632,25 +632,25 @@
     <div class="global-fields">
       <div class="field-group">
         <label>제목 (예: 쉐키나 3월 5주차)</label>
-        <input type="text" id="adm-title" placeholder="쉐키나 3월 5주차" oninput="markDirty()">
+        <input type="text" id="adm-title" placeholder="" oninput="markDirty()">
       </div>
       <div class="field-group">
         <label>부제목</label>
-        <input type="text" id="adm-sub" placeholder="주간 동선표 · Shekinah Weekly Schedule" oninput="markDirty()">
+        <input type="text" id="adm-sub" placeholder="" oninput="markDirty()">
       </div>
     </div>
     <div class="global-fields" style="margin-top:12px">
       <div class="field-group">
         <label>🎨 드레스코드</label>
-        <input type="text" id="adm-dresscode" placeholder="파스텔" oninput="markDirty()">
+        <input type="text" id="adm-dresscode" placeholder="" oninput="markDirty()">
       </div>
       <div class="field-group">
         <label>🌈 휴가</label>
-        <input type="text" id="adm-holiday" placeholder="권기윤(2)" oninput="markDirty();refreshAllSelects()">
+        <input type="text" id="adm-holiday" placeholder="" oninput="markDirty();refreshAllSelects()">
       </div>
       <div class="field-group">
         <label>🙏 장기휴가</label>
-        <input type="text" id="adm-longholiday" placeholder="손가빈" oninput="markDirty();refreshAllSelects()">
+        <input type="text" id="adm-longholiday" placeholder="" oninput="markDirty();refreshAllSelects()">
       </div>
     </div>
   </div>
@@ -748,21 +748,11 @@ async function init() {
   showToast('✅ 불러오기 완료!');
 }
 
-// 클라우드에서 실시간 업데이트 수신 시 적용
-window._applyCloudState = async function(newState) {
+// 클라우드에서 실시간 업데이트 수신 시 적용 (state만, memberStore는 건드리지 않음)
+window._applyCloudState = function(newState) {
   if (dirty) return;
   state = newState;
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
-  // memberStore도 최신으로 갱신
-  if (window._fbLoadMembers) {
-    try {
-      const cm = await window._fbLoadMembers();
-      if (cm && Object.keys(cm).length > 0) {
-        memberStore = cm;
-        try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
-      }
-    } catch(e) {}
-  }
   renderAdmin();
   renderPublic();
   showToast('☁️ 다른 기기에서 업데이트됨');
@@ -877,9 +867,9 @@ function buildSessionEditor(sess, si) {
       seatsHTML += `
         <div class="seat-editor" id="seat-ed-${si}-${idx}">
           <div class="seat-editor-nums">
-            <input type="text" placeholder="자리" value="${seat.seat}" title="자리번호"
+            <input type="text" placeholder="" value="${seat.seat}" title="자리번호"
               oninput="updateSeat(${si},${idx},'seat',this.value)">
-            <input type="text" placeholder="마이크" value="${seat.mic}" title="마이크번호"
+            <input type="text" placeholder="" value="${seat.mic}" title="마이크번호"
               oninput="updateSeat(${si},${idx},'mic',this.value)">
           </div>
           <div class="seat-photo-thumb" id="thumb-${si}-${idx}">
@@ -918,12 +908,12 @@ function buildSessionEditor(sess, si) {
       <div class="session-meta-row">
         <div class="field-group" style="flex:2">
           <label>세션 제목</label>
-          <input type="text" value="${sess.title}" placeholder="3/25 수요저녁기도회"
+          <input type="text" value="${sess.title}" placeholder=""
             oninput="updateSession(${si},'title',this.value)">
         </div>
         <div class="field-group">
           <label>시간 정보</label>
-          <input type="text" value="${sess.time}" placeholder="pm 6:55 → 대기실"
+          <input type="text" value="${sess.time}" placeholder=""
             oninput="updateSession(${si},'time',this.value)">
         </div>
         <div class="field-group" style="min-width:240px">
@@ -968,6 +958,25 @@ function updateSeat(si, idx, key, val) {
 
 function selectSeatMember(si, idx, name) {
   if (!state.sessions[si].seats[idx]) state.sessions[si].seats[idx] = { seat: String(idx+1), mic:'', name:'' };
+
+  // 휴가자 체크: 콤마 기준으로 파싱해서 이름 매칭
+  if (name) {
+    const holiday = state.holiday || '';
+    const longHoliday = state.longholiday || '';
+    const holidayList = [holiday, longHoliday]
+      .flatMap(s => s.split(','))
+      .map(s => s.replace(/\(\d+\)/, '').trim())
+      .filter(Boolean);
+    const nameOnly = stripExt(name);
+    if (holidayList.includes(nameOnly) || holidayList.includes(name)) {
+      alert('이 단원은 휴가자 입니다.');
+      // 셀렉트를 이전 값으로 되돌림
+      const sel = document.querySelector(`#seat-ed-${si}-${idx} .seat-name-select`);
+      if (sel) sel.value = state.sessions[si].seats[idx].name || '';
+      return;
+    }
+  }
+
   state.sessions[si].seats[idx].name = name;
   // 단원 리스트에서 사진 자동 세팅
   if (name && memberStore[name]) {
@@ -1211,18 +1220,23 @@ function readAdminFields() {
 async function saveAll() {
   readAdminFields();
   // 로컬 저장
-  localStorage.setItem('shekinah_state', JSON.stringify(state));
-  localStorage.setItem('shekinah_photos', JSON.stringify(photoStore));
-  localStorage.setItem('shekinah_members', JSON.stringify(memberStore));
+  try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
+  try { localStorage.setItem('shekinah_photos', JSON.stringify(photoStore)); } catch(e) {}
+  try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
   renderPublic();
   dirty = false;
   document.getElementById('save-bar').classList.remove('visible');
 
-  // Firebase 저장 (비동기)
   if (window._fbSave) {
     showToast('⏳ 저장 중...');
     const ok = await window._fbSave(state);
-    showToast(ok ? '✅ 저장 완료! (클라우드 동기화)' : '✅ 로컬 저장 완료 (Firebase 연결 확인 필요)');
+    // memberStore도 함께 저장 (사진 보호)
+    if (window._fbSaveOneMember && Object.keys(memberStore).length > 0) {
+      for (const [filename, dataURL] of Object.entries(memberStore)) {
+        try { await window._fbSaveOneMember(safeKey(filename), filename, dataURL); } catch(e) {}
+      }
+    }
+    showToast(ok ? '✅ 저장 완료!' : '✅ 로컬 저장 완료');
   } else {
     showToast('✅ 저장되었습니다!');
   }
