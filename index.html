@@ -536,6 +536,9 @@
     border-radius: 5px; padding: 2px 2px; font-size: 12px;
     font-family: inherit;
   }
+  .mi-num-input.mi-height-input {
+    width: 56px;
+  }
   .mi-num-input:focus { outline: none; border-color: var(--coral); }
   .mi-adj-btn {
     width: 20px; height: 20px; border: 1px solid #ddd;
@@ -732,6 +735,8 @@
       <button class="mi-add-btn" style="margin-top:0" onclick="addMemberInfoRow()">＋ 행 추가</button>
       <button class="mi-add-btn" style="margin-top:0;border-color:#be185d;color:#be185d;" onclick="sortMemberInfo('female')">👧 여→남 정렬</button>
       <button class="mi-add-btn" style="margin-top:0;border-color:#1d4ed8;color:#1d4ed8;" onclick="sortMemberInfo('male')">👦 남→여 정렬</button>
+      <button class="mi-add-btn" style="margin-top:0;border-color:#059669;color:#059669;" onclick="sortMemberInfoByHeight('desc')">📏 키 큰순</button>
+      <button class="mi-add-btn" style="margin-top:0;border-color:#d97706;color:#d97706;" onclick="sortMemberInfoByHeight('asc')">📏 키 작은순</button>
     </div>
   </div>
 
@@ -1568,7 +1573,9 @@ function buildMemberInfoRow(row, i) {
     <td>
       <div class="mi-num-wrap">
         <button class="mi-adj-btn" onclick="adjustMiNum(${i},'${field}',-1)">−</button>
-        <input class="mi-num-input" type="number" value="${row[field] || 0}"
+        <input class="mi-num-input${field==='height'?' mi-height-input':''}" type="number"
+          step="${field==='height'?'0.1':'1'}"
+          value="${row[field] || 0}"
           oninput="updateMiField(${i},'${field}',+this.value)">
         <button class="mi-adj-btn" onclick="adjustMiNum(${i},'${field}',1)">＋</button>
       </div>
@@ -1601,9 +1608,9 @@ function updateMiField(i, field, val) {
 function adjustMiNum(i, field, delta) {
   if (!state.memberInfo[i]) return;
   const cur = Number(state.memberInfo[i][field]) || 0;
-  const next = Math.max(0, cur + delta);
+  const step = field === 'height' ? 0.1 : 1;
+  const next = Math.max(0, Math.round((cur + delta * step) * 10) / 10);
   state.memberInfo[i][field] = next;
-  // 인풋 직접 갱신
   const inputs = document.querySelectorAll(`#mi-row-${i} .mi-num-input`);
   const fields = ['height','vacation','late','remaining','external','selfServe'];
   const fi = fields.indexOf(field);
@@ -1611,6 +1618,22 @@ function adjustMiNum(i, field, delta) {
   markDirty();
 }
 
+
+
+function sortMemberInfoByHeight(dir) {
+  if (!state.memberInfo) return;
+  state.memberInfo.sort((a, b) => {
+    const ha = Number(a.height) || 0;
+    const hb = Number(b.height) || 0;
+    // 키 0인 행은 항상 맨 뒤
+    if (!ha && !hb) return 0;
+    if (!ha) return 1;
+    if (!hb) return -1;
+    return dir === 'desc' ? hb - ha : ha - hb;
+  });
+  renderMemberInfo();
+  markDirty();
+}
 
 function sortMemberInfo(firstGender) {
   if (!state.memberInfo) return;
