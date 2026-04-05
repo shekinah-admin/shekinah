@@ -706,45 +706,62 @@ function stripExt(filename) {
 
 // ══════════════ INIT ══════════════
 async function init() {
-  // 로컬 사진/단원 데이터는 localStorage 유지 (용량 문제로 Firebase 제외)
-  const savedPhotos = localStorage.getItem('shekinah_photos');
-  const savedMembers = localStorage.getItem('shekinah_members');
-  if (savedPhotos) photoStore = JSON.parse(savedPhotos);
-  if (savedMembers) memberStore = JSON.parse(savedMembers);
+  showToast('☁️ 데이터 불러오는 중...');
 
-  // 동선표 state: Firebase 우선, fallback은 localStorage
+  // 1) state 로드 (Firebase 우선 → localStorage fallback)
   const cloudState = await (window._fbLoad ? window._fbLoad() : Promise.resolve(null));
   if (cloudState) {
     state = cloudState;
-    localStorage.setItem('shekinah_state', JSON.stringify(state));
-    showToast('☁️ 클라우드에서 불러왔습니다');
+    try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
   } else {
     const saved = localStorage.getItem('shekinah_state');
-    if (saved) state = JSON.parse(saved);
+    if (saved) { try { state = JSON.parse(saved); } catch(e) {} }
   }
 
+  // 2) memberStore 로드 (Firebase 우선 → localStorage fallback)
+  //    Firebase에 없거나 실패하면 localStorage 사용
+  let cloudMembers = null;
+  if (window._fbLoadMembers) {
+    try { cloudMembers = await window._fbLoadMembers(); } catch(e) {}
+  }
+  if (cloudMembers && Object.keys(cloudMembers).length > 0) {
+    memberStore = cloudMembers;
+    try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
+  } else {
+    const savedMembers = localStorage.getItem('shekinah_members');
+    if (savedMembers) { try { memberStore = JSON.parse(savedMembers); } catch(e) {} }
+  }
+
+  // 3) photoStore (레거시, localStorage만)
+  const savedPhotos = localStorage.getItem('shekinah_photos');
+  if (savedPhotos) { try { photoStore = JSON.parse(savedPhotos); } catch(e) {} }
 
   // Firebase 미설정 시 안내 배너 표시
   setTimeout(() => {
     const notice = document.getElementById('firebase-notice');
-    if (notice && (!window._fbSave)) {
-      notice.classList.add('show');
-    }
+    if (notice && !window._fbSave) notice.classList.add('show');
   }, 2000);
 
   if (!state.sessions.length) loadDefaultData();
   renderAdmin();
   renderPublic();
+  showToast('✅ 불러오기 완료!');
 }
 
 // 클라우드에서 실시간 업데이트 수신 시 적용
 window._applyCloudState = async function(newState) {
   if (dirty) return;
   state = newState;
-  localStorage.setItem('shekinah_state', JSON.stringify(state));
+  try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
+  // memberStore도 최신으로 갱신
   if (window._fbLoadMembers) {
-    const cm = await window._fbLoadMembers();
-    if (cm) { memberStore = cm; localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); }
+    try {
+      const cm = await window._fbLoadMembers();
+      if (cm && Object.keys(cm).length > 0) {
+        memberStore = cm;
+        try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
+      }
+    } catch(e) {}
   }
   renderAdmin();
   renderPublic();
@@ -988,10 +1005,12 @@ function refreshSessionSelects(si) {
     const members = Object.keys(memberStore);
     sel.innerHTML = '<option value="">— 선택 —</option>';
     members.forEach(name => {
-      // 현재 자리에 선택된 이름이면 표시, 다른 자리/휴가에 있으면 제외
       const isCurrentSeat = (name === currentVal);
-      const isExcluded = excluded.has(name) || excluded.has(stripExt(name));
-      if (isCurrentSeat || !isExcluded) {
+      const isHoliday = holidayNames.has(name) || holidayNames.has(stripExt(name));
+      const isUsedElsewhere = usedNames.has(name) && !isCurrentSeat;
+      // 휴가인 사람은 현재 자리에 있어도 무조건 제외
+      // 다른 자리에 이미 선택된 사람도 제외
+      if (!isHoliday && (isCurrentSeat || !isUsedElsewhere)) {
         const opt = document.createElement('option');
         opt.value = name;
         opt.textContent = stripExt(name);
@@ -1003,11 +1022,11 @@ function refreshSessionSelects(si) {
 }
 
 function getHolidayNames() {
-  // DOM이 있으면 DOM 우선, 없으면 state에서 읽기
+  // || 사용: 빈 문자열도 falsy로 처리해서 state 값 사용
   const hEl = document.getElementById('adm-holiday');
   const lhEl = document.getElementById('adm-longholiday');
-  const holiday = (hEl ? hEl.value : null) ?? state.holiday ?? '';
-  const longHoliday = (lhEl ? lhEl.value : null) ?? state.longholiday ?? '';
+  const holiday = (hEl && hEl.value) || state.holiday || '';
+  const longHoliday = (lhEl && lhEl.value) || state.longholiday || '';
 
   const baseNames = new Set();
   [holiday, longHoliday].forEach(str => {
@@ -1018,11 +1037,10 @@ function getHolidayNames() {
     });
   });
 
-  // memberStore 파일명과 매칭: 정확히 일치 or 파일명이 baseNames 이름을 포함
+  // memberStore 파일명과 매칭
   const names = new Set(baseNames);
   Object.keys(memberStore).forEach(filename => {
     const ext = stripExt(filename);
-    // 정확히 일치하거나, 파일명(확장자 제거)이 baseNames의 어떤 이름과 일치
     for (const base of baseNames) {
       if (ext === base || ext.includes(base) || base.includes(ext)) {
         names.add(filename);
@@ -1038,8 +1056,8 @@ function refreshAllSelects() {
   // DOM 값을 state에 먼저 동기화
   const hEl = document.getElementById('adm-holiday');
   const lhEl = document.getElementById('adm-longholiday');
-  if (hEl) state.holiday = hEl.value;
-  if (lhEl) state.longholiday = lhEl.value;
+  if (hEl && hEl.value !== undefined) state.holiday = hEl.value;
+  if (lhEl && lhEl.value !== undefined) state.longholiday = lhEl.value;
   state.sessions.forEach((_, si) => refreshSessionSelects(si));
 }
 function updateNote(si, ni, key, val) {
@@ -1332,16 +1350,14 @@ function buildSessionCard(sess, si) {
 
 // ══════════════ NAVIGATION ══════════════
 const ADMIN_PW = '2033';
-let adminUnlocked = false;
 
 function showPage(id) {
-  if (id === 'admin' && !adminUnlocked) {
+  if (id === 'admin') {
     const pw = prompt('🔒 관리자 비밀번호를 입력하세요:');
     if (pw !== ADMIN_PW) {
-      alert('비밀번호가 틀렸습니다.');
+      if (pw !== null) alert('비밀번호가 틀렸습니다.');
       return;
     }
-    adminUnlocked = true;
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
