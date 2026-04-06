@@ -1531,84 +1531,64 @@ async function saveAsImage() {
   btn.textContent = '⏳ 저장 중...';
   btn.disabled = true;
 
-  const target = document.getElementById('page-public');
-  // 현재 page-public이 숨겨져 있는지 확인
-  const wasHidden = !target.classList.contains('active');
-
-  // 숨겨져 있으면 오프스크린으로 임시 표시
-  if (wasHidden) {
-    target.style.cssText = 'display:block !important; position:fixed; top:-99999px; left:0; width:1100px; visibility:hidden; pointer-events:none;';
-  }
-
-  // 버튼 숨기기
-  btn.style.visibility = 'hidden';
-
-  // 애니메이션 정지
-  const styleEl = document.createElement('style');
-  styleEl.id = '_cap_pause';
-  styleEl.textContent = '*, *::before, *::after { animation-play-state: paused !important; transition: none !important; }';
-  document.head.appendChild(styleEl);
-
-  // 렌더링 대기
-  await new Promise(r => setTimeout(r, 200));
+  // 날짜시간 파일명
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
 
   try {
-    const W = 2000;
-    const srcW = wasHidden ? 1100 : target.scrollWidth;
-    const scale = W / srcW;
+    // 동선표 페이지가 숨겨져 있으면 잠깐 active로 전환 후 캡처
+    const pubPage = document.getElementById('page-public');
+    const adminPage = document.getElementById('page-admin');
+    const wasAdmin = adminPage.classList.contains('active');
 
-    const canvas = await html2canvas(target, {
-      scale: scale,
+    // 동선표 페이지 강제 표시
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    pubPage.classList.add('active');
+    pubPage.style.display = 'block';
+    btn.style.display = 'none';
+
+    // 애니메이션 정지
+    const pauseStyle = document.createElement('style');
+    pauseStyle.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
+    document.head.appendChild(pauseStyle);
+
+    await new Promise(r => setTimeout(r, 300));
+
+    const canvas = await html2canvas(pubPage, {
+      scale: Math.min(3, 2000 / pubPage.offsetWidth),
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#0a0a0a',
       logging: false,
-      width: srcW,
-      height: target.scrollHeight,
-      scrollX: 0,
-      scrollY: 0,
-      imageTimeout: 15000,
-      onclone: (clonedDoc) => {
-        const el = clonedDoc.getElementById('page-public');
-        if (el) {
-          el.style.display = 'block';
-          el.style.position = 'relative';
-          el.style.top = '0';
-          el.style.left = '0';
-          el.style.visibility = 'visible';
-          el.style.overflow = 'visible';
-          el.style.height = 'auto';
-          el.style.width = srcW + 'px';
-        }
-        // 저장 버튼 숨기기
-        const b = clonedDoc.getElementById('save-img-btn');
-        if (b) b.style.display = 'none';
-        // nav 숨기기
-        const nav = clonedDoc.querySelector('.nav');
-        if (nav) nav.style.display = 'none';
-      }
+      scrollX: -window.scrollX,
+      scrollY: -window.scrollY,
+      windowWidth: window.innerWidth,
+      windowHeight: pubPage.scrollHeight,
     });
-
-    // 날짜시간 파일명
-    const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
 
     const link = document.createElement('a');
     link.download = `쉐키나_동선표_${ts}.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.95);
     link.click();
 
+    pauseStyle.remove();
+
+    // 원래 상태 복원
+    btn.style.display = '';
+    if (wasAdmin) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      adminPage.classList.add('active');
+      document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    }
+
   } catch(e) {
     alert('저장 실패: ' + e.message);
   } finally {
-    // 복원
-    if (wasHidden) target.style.cssText = '';
-    btn.style.visibility = '';
+    btn.style.display = '';
     btn.textContent = '📷 이미지로 저장';
     btn.disabled = false;
-    const s = document.getElementById('_cap_pause');
-    if (s) s.remove();
   }
 }
 
