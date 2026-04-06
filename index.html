@@ -1576,17 +1576,20 @@ async function saveAsImage() {
 
     const imgData = canvas.toDataURL('image/jpeg', 1.0);
 
-    // 비율 그대로 유지 (A4 너비 기준)
-    const pdfW = 210; // mm
-    const pdfH = Math.round(pageH / pageW * pdfW);
+    // canvas는 scale:2로 찍혔으므로 실제 px = canvas.width/2, canvas.height/2
+    // 1px = 0.264583mm (96dpi 기준)
+    const PX_TO_MM = 0.264583;
+    const pdfW = Math.round(pageW * PX_TO_MM);
+    const pdfH = Math.round(pageH * PX_TO_MM);
 
     const pdf = new jsPDF({
-      orientation: 'portrait',
+      orientation: pdfH > pdfW ? 'portrait' : 'landscape',
       unit: 'mm',
       format: [pdfW, pdfH],
       compress: false
     });
 
+    // canvas 이미지를 PDF 페이지 크기에 정확히 맞춤
     pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH, '', 'FAST');
     pdf.save(`쉐키나_동선표_${ts}.pdf`);
 
