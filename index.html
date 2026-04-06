@@ -111,7 +111,7 @@
   .session-header.peach { background: linear-gradient(135deg, #fef5ee, #fde8da); }
 
   .pin-icon { font-size: 20px; }
-  .session-title { font-size: 22px; font-weight: 700; color: var(--text-dark); }
+  .session-title { font-size: 24px; font-weight: 700; color: var(--text-dark); }
   .session-time {
     margin-left: auto; font-size: 12px; font-weight: 500;
     color: white; background: var(--coral); padding: 4px 12px; border-radius: 20px; font-size: 15px;
@@ -142,7 +142,7 @@
     padding: 2px 6px; border-radius: 6px; font-weight: 500;
   }
   .mic-num {
-    background: var(--coral-light); color: var(--coral);
+    background: #f5c0b4; color: #b83020;
     padding: 2px 6px; border-radius: 6px; font-weight: 700;
   }
 
@@ -369,7 +369,7 @@
       #cc2200 55%, #dd7700 72%,
       #cc9900 86%, #5500aa 100%
     );
-    animation: ig-spin 4s linear infinite;
+    animation: ig-spin 3.6s linear infinite;
     opacity: 0.85;
     z-index: 1;
   }
@@ -384,7 +384,7 @@
       #bb0077 0%, #ee3300 28%,
       #cc8800 55%, #990099 78%, #bb0077 100%
     );
-    animation: ig-spin2 6s linear infinite;
+    animation: ig-spin2 5.4s linear infinite;
     opacity: 0.55;
     mix-blend-mode: screen;
     z-index: 2;
@@ -401,7 +401,7 @@
       from 45deg,
       #ff00cc 0%, #ffaa00 25%, #00ffcc 50%, #aa00ff 75%, #ff00cc 100%
     );
-    animation: ig-spin3 8s linear infinite, ig-pulse 3s ease-in-out infinite;
+    animation: ig-spin3 7.2s linear infinite, ig-pulse 2.7s ease-in-out infinite;
     mix-blend-mode: screen;
     z-index: 0;
   }
@@ -444,15 +444,16 @@
 
   /* ── 단원 리스트 ── */
   .member-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 10px; background: var(--warm-white);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 10px 6px; background: var(--warm-white);
     border-radius: 10px; border: 1px solid var(--gold-light);
+    text-align: center;
   }
   .member-thumb {
-    width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+    width: 52px; height: 52px; border-radius: 50%; object-fit: cover;
     border: 1.5px solid var(--gold-light); flex-shrink: 0;
   }
-  .member-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-dark); }
+  .member-name { font-size: 12px; font-weight: 600; color: var(--text-dark); word-break: break-all; }
   .member-empty { color: var(--text-light); font-size: 13px; padding: 12px 0; }
 
   /* ── 자리 편집기 사진 썸네일 ── */
@@ -707,7 +708,7 @@
       <input type="file" id="member-upload-input" accept="image/*" multiple style="display:none" onchange="handleMemberUpload(event)">
       <span style="font-size:12px;color:var(--text-light)">※ 가급적 정사각형 이미지, 파일명은 반드시 단원 이름으로 저장한 후 업로드 해주세요.</span>
     </div>
-    <div id="member-list" style="display:flex;flex-direction:column;gap:8px;max-height:392px;overflow-y:auto;"></div>
+    <div id="member-list" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:392px;overflow-y:auto;"></div>
   </div>
 
   <!-- 단원 종합정보 -->
@@ -720,11 +721,12 @@
             <th>성별</th>
             <th>이름</th>
             <th>키(cm)</th>
-            <th>휴가<br>사용</th>
+            <th style="color:#1d4ed8">휴가<br>사용</th>
             <th>지각</th>
-            <th>잔여<br>풀동</th>
-            <th>외부<br>사역</th>
+            <th>펑크</th>
             <th>자진<br>풀동</th>
+            <th style="color:#ef4444">잔여<br>풀동</th>
+            <th>외부<br>사역</th>
             <th>삭제</th>
           </tr>
         </thead>
@@ -811,7 +813,7 @@ let state = {
 };
 
 function makeMemberInfoRow() {
-  return { gender:'', name:'', height:'', vacation:0, late:0, remaining:0, external:0, selfServe:0 };
+  return { gender:'', name:'', height:'', vacation:0, late:0, flunk:0, selfServe:0, remaining:0, external:0 };
 }
 
 let photoStore = {}; // sessionIdx-seatIdx -> dataURL
@@ -1020,6 +1022,7 @@ function buildSessionEditor(sess, si) {
     <div class="admin-session-header" onclick="toggleSession(${si})">
       <div class="session-color-dot" style="background:${COLOR_HEX[sess.color]}"></div>
       <div class="admin-session-name">${sess.title || '(제목 없음)'}</div>
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();copySession(${si})" style="margin-right:4px">복사</button>
       <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();removeSession(${si})">삭제</button>
       <div class="session-toggle">▼</div>
     </div>
@@ -1203,6 +1206,17 @@ function addSession() {
   });
   renderAdmin(); markDirty();
 }
+
+function copySession(si) {
+  if (!confirm('이 세션을 복사하시겠습니까?')) return;
+  const orig = state.sessions[si];
+  const copy = JSON.parse(JSON.stringify(orig));
+  copy.title = copy.title + ' (복사)';
+  state.sessions.splice(si + 1, 0, copy);
+  renderAdmin();
+  markDirty();
+}
+
 function removeSession(si) {
   if (!confirm('이 세션을 삭제할까요?')) return;
   // Clean photos
@@ -1558,7 +1572,7 @@ function buildMemberInfoRow(row, i) {
   tr.id = `mi-row-${i}`;
 
   // 성별 토글
-  const genderLabel = row.gender === 'male' ? '남' : row.gender === 'female' ? '녀' : '—';
+  const genderLabel = row.gender === 'male' ? '남' : row.gender === 'female' ? '여' : '—';
   const genderClass = row.gender === 'male' ? 'male' : row.gender === 'female' ? 'female' : '';
 
   tr.innerHTML = `
@@ -1569,7 +1583,7 @@ function buildMemberInfoRow(row, i) {
       <input class="mi-name-input" type="text" value="${row.name || ''}"
         oninput="updateMiField(${i},'name',this.value)" placeholder="">
     </td>
-    ${['height','vacation','late','remaining','external','selfServe'].map(field => `
+    ${['height','vacation','late','flunk','selfServe','remaining','external'].map(field => `
     <td>
       <div class="mi-num-wrap">
         <button class="mi-adj-btn" onclick="adjustMiNum(${i},'${field}',-1)">−</button>
@@ -1594,7 +1608,7 @@ function toggleMiGender(i) {
   if (btn) {
     const ng = state.memberInfo[i].gender;
     btn.className = 'mi-gender-btn' + (ng === 'male' ? ' male' : ng === 'female' ? ' female' : '');
-    btn.textContent = ng === 'male' ? '남' : ng === 'female' ? '녀' : '—';
+    btn.textContent = ng === 'male' ? '남' : ng === 'female' ? '여' : '—';
   }
   markDirty();
 }
@@ -1612,7 +1626,7 @@ function adjustMiNum(i, field, delta) {
   const next = Math.max(0, Math.round((cur + delta * step) * 10) / 10);
   state.memberInfo[i][field] = next;
   const inputs = document.querySelectorAll(`#mi-row-${i} .mi-num-input`);
-  const fields = ['height','vacation','late','remaining','external','selfServe'];
+  const fields = ['height','vacation','late','flunk','selfServe','remaining','external'];
   const fi = fields.indexOf(field);
   if (fi >= 0 && inputs[fi]) inputs[fi].value = next;
   markDirty();
