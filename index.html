@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>쉐키나 동선표</title>
-<script src="https://unpkg.com/dom-to-image-more@2.9.0/dist/dom-to-image-more.min.js"></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -1530,56 +1530,90 @@ async function saveAsImage() {
   const btn = document.getElementById('save-img-btn');
   btn.textContent = '⏳ 저장 중...';
   btn.disabled = true;
-  btn.style.display = 'none';
 
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
   const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
 
-  const target = document.getElementById('page-public');
-  const W = 2000;
-  const scale = W / target.offsetWidth;
-
   try {
-    const dataUrl = await domtoimage.toJpeg(target, {
-      quality: 0.95,
-      bgcolor: '#0a0a0a',
-      width: target.offsetWidth,
-      height: target.scrollHeight,
-      style: {
-        transform: 'scale(1)',
-        transformOrigin: 'top left',
-        overflow: 'visible'
-      },
-      filter: node => {
-        // 저장 버튼 제외
-        if (node.id === 'save-img-btn') return false;
-        return true;
-      }
-    });
+    // 방법: 동선표 내용을 SVG foreignObject로 감싸서 Canvas에 그리기
+    const target = document.getElementById('page-public');
+    const W = target.scrollWidth;
+    const H = target.scrollHeight;
+    const SCALE = 2000 / W;
 
-    // scale 적용 위해 canvas에 그리기
+    // 버튼 임시 숨기기
+    btn.style.opacity = '0';
+
+    // 인라인 스타일 수집
+    const getStyles = () => {
+      let css = '';
+      for (const sheet of document.styleSheets) {
+        try {
+          for (const rule of sheet.cssRules) {
+            css += rule.cssText + '\n';
+          }
+        } catch(e) {}
+      }
+      return css;
+    };
+
+    const styles = getStyles();
+    const clone = target.cloneNode(true);
+    clone.style.width = W + 'px';
+    clone.style.height = H + 'px';
+    clone.style.overflow = 'visible';
+    clone.style.position = 'static';
+    clone.style.display = 'block';
+
+    // 버튼 숨기기
+    const cloneBtn = clone.querySelector('#save-img-btn');
+    if (cloneBtn) cloneBtn.style.display = 'none';
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+          <style>${styles}</style>
+          ${clone.outerHTML}
+        </div>
+      </foreignObject>
+    </svg>`;
+
+    const blob = new Blob([svg], {type: 'image/svg+xml'});
+    const url = URL.createObjectURL(blob);
+
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = W;
-      canvas.height = Math.round(img.height * scale);
+      canvas.width = Math.round(W * SCALE);
+      canvas.height = Math.round(H * SCALE);
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#0a0a0a';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
 
       const link = document.createElement('a');
       link.download = `쉐키나_동선표_${ts}.jpg`;
       link.href = canvas.toDataURL('image/jpeg', 0.95);
       link.click();
+
+      btn.style.opacity = '';
+      btn.textContent = '📷 이미지로 저장';
+      btn.disabled = false;
     };
-    img.src = dataUrl;
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      alert('저장 실패: 이미지 렌더링 오류');
+      btn.style.opacity = '';
+      btn.textContent = '📷 이미지로 저장';
+      btn.disabled = false;
+    };
+    img.src = url;
 
   } catch(e) {
     alert('저장 실패: ' + e.message);
-  } finally {
-    btn.style.display = '';
+    btn.style.opacity = '';
     btn.textContent = '📷 이미지로 저장';
     btn.disabled = false;
   }
