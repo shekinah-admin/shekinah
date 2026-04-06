@@ -1531,21 +1531,31 @@ async function saveAsImage() {
   btn.textContent = '⏳ 저장 중...';
   btn.disabled = true;
 
-  // 애니메이션 일시정지 (캡처 품질 향상)
+  const target = document.getElementById('page-public');
+  // 현재 page-public이 숨겨져 있는지 확인
+  const wasHidden = !target.classList.contains('active');
+
+  // 숨겨져 있으면 오프스크린으로 임시 표시
+  if (wasHidden) {
+    target.style.cssText = 'display:block !important; position:fixed; top:-99999px; left:0; width:1100px; visibility:hidden; pointer-events:none;';
+  }
+
+  // 버튼 숨기기
+  btn.style.visibility = 'hidden';
+
+  // 애니메이션 정지
   const styleEl = document.createElement('style');
-  styleEl.id = '_capture_style';
-  styleEl.textContent = '*, *::before, *::after { animation-play-state: paused !important; }';
+  styleEl.id = '_cap_pause';
+  styleEl.textContent = '*, *::before, *::after { animation-play-state: paused !important; transition: none !important; }';
   document.head.appendChild(styleEl);
 
-  btn.style.display = 'none';
-
-  // 짧게 대기 후 캡처 (애니메이션 정지 반영)
-  await new Promise(r => setTimeout(r, 100));
+  // 렌더링 대기
+  await new Promise(r => setTimeout(r, 200));
 
   try {
-    const target = document.getElementById('page-public');
     const W = 2000;
-    const scale = W / target.scrollWidth;
+    const srcW = wasHidden ? 1100 : target.scrollWidth;
+    const scale = W / srcW;
 
     const canvas = await html2canvas(target, {
       scale: scale,
@@ -1553,24 +1563,33 @@ async function saveAsImage() {
       allowTaint: true,
       backgroundColor: '#0a0a0a',
       logging: false,
-      width: target.scrollWidth,
+      width: srcW,
       height: target.scrollHeight,
       scrollX: 0,
       scrollY: 0,
-      windowWidth: target.scrollWidth,
-      windowHeight: target.scrollHeight,
-      imageTimeout: 0,
-      onclone: (doc) => {
-        // 캡처 대상 페이지 스타일 고정
-        const el = doc.getElementById('page-public');
+      imageTimeout: 15000,
+      onclone: (clonedDoc) => {
+        const el = clonedDoc.getElementById('page-public');
         if (el) {
+          el.style.display = 'block';
+          el.style.position = 'relative';
+          el.style.top = '0';
+          el.style.left = '0';
+          el.style.visibility = 'visible';
           el.style.overflow = 'visible';
           el.style.height = 'auto';
+          el.style.width = srcW + 'px';
         }
+        // 저장 버튼 숨기기
+        const b = clonedDoc.getElementById('save-img-btn');
+        if (b) b.style.display = 'none';
+        // nav 숨기기
+        const nav = clonedDoc.querySelector('.nav');
+        if (nav) nav.style.display = 'none';
       }
     });
 
-    // 날짜시간 파일명 (YYYYMMDDHHMI 형식)
+    // 날짜시간 파일명
     const now = new Date();
     const pad = n => String(n).padStart(2,'0');
     const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
@@ -1579,14 +1598,16 @@ async function saveAsImage() {
     link.download = `쉐키나_동선표_${ts}.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.95);
     link.click();
+
   } catch(e) {
     alert('저장 실패: ' + e.message);
   } finally {
-    btn.style.display = '';
+    // 복원
+    if (wasHidden) target.style.cssText = '';
+    btn.style.visibility = '';
     btn.textContent = '📷 이미지로 저장';
     btn.disabled = false;
-    // 애니메이션 복원
-    const s = document.getElementById('_capture_style');
+    const s = document.getElementById('_cap_pause');
     if (s) s.remove();
   }
 }
