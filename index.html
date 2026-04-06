@@ -1557,40 +1557,44 @@ async function saveAsImage() {
       height: pageH,
       windowWidth: pageW,
       windowHeight: pageH,
-      // 색상 정확도 향상
-      foreignObjectRendering: false,
       imageTimeout: 0,
-      onclone: (clonedDoc) => {
-        // 클론에서 애니메이션 정지
-        const style = clonedDoc.createElement('style');
-        style.textContent = '* { animation: none !important; transition: none !important; }';
-        clonedDoc.head.appendChild(style);
-        // 사진 비율 고정
-        clonedDoc.querySelectorAll('.seat-photo').forEach(img => {
-          img.style.objectFit = 'cover';
-          img.style.width = '97px';
-          img.style.height = '97px';
-        });
+      onclone: (doc) => {
+        // 애니메이션/transition 정지
+        const s = doc.createElement('style');
+        s.textContent = `
+          * { animation: none !important; transition: none !important; }
+          /* 링 장식 제거 - conic-gradient가 캡처 안됨 */
+          .ig-ring-1, .ig-ring-2, .ig-ring-3 { display: none !important; }
+          /* 사진 원형 테두리로 대체 */
+          .photo-ring-wrap {
+            border: 4px solid #dd5588 !important;
+            border-radius: 50% !important;
+            box-shadow: 0 0 0 2px #aa0055 !important;
+          }
+          /* 사진 비율 고정 */
+          .seat-photo {
+            width: 97px !important; height: 97px !important;
+            object-fit: cover !important;
+            border-radius: 50% !important;
+          }
+          /* 세션카드 hover 효과 제거 */
+          .session-card { transform: none !important; }
+        `;
+        doc.head.appendChild(s);
       }
     });
 
     const imgData = canvas.toDataURL('image/jpeg', 1.0);
-
-    // canvas는 scale:2로 찍혔으므로 실제 px = canvas.width/2, canvas.height/2
-    // 1px = 0.264583mm (96dpi 기준)
-    const PX_TO_MM = 0.264583;
-    const pdfW = Math.round(pageW * PX_TO_MM);
-    const pdfH = Math.round(pageH * PX_TO_MM);
+    const pdfW = 210;
+    const pdfH = Math.round(pageH / pageW * pdfW);
 
     const pdf = new jsPDF({
-      orientation: pdfH > pdfW ? 'portrait' : 'landscape',
+      orientation: 'portrait',
       unit: 'mm',
       format: [pdfW, pdfH],
-      compress: false
     });
 
-    // canvas 이미지를 PDF 페이지 크기에 정확히 맞춤
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH, '', 'FAST');
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
     pdf.save(`쉐키나_동선표_${ts}.pdf`);
 
   } catch(e) {
