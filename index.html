@@ -1463,7 +1463,7 @@ function buildSessionCard(sess, si) {
           ${seat.mic ? `<span class="mic-num">${seat.mic}-마이크</span>` : ''}
         </div>
         ${photoEl}
-        <div class="seat-name">${seat.name ? stripExt(seat.name) : '—'}</div>
+        <div class="seat-name">${seat.name ? stripExt(seat.name) : ''}</div>
       </div>`;
   }
 
@@ -1530,26 +1530,65 @@ async function saveAsImage() {
   const btn = document.getElementById('save-img-btn');
   btn.textContent = '⏳ 저장 중...';
   btn.disabled = true;
+
+  // 애니메이션 일시정지 (캡처 품질 향상)
+  const styleEl = document.createElement('style');
+  styleEl.id = '_capture_style';
+  styleEl.textContent = '*, *::before, *::after { animation-play-state: paused !important; }';
+  document.head.appendChild(styleEl);
+
+  btn.style.display = 'none';
+
+  // 짧게 대기 후 캡처 (애니메이션 정지 반영)
+  await new Promise(r => setTimeout(r, 100));
+
   try {
     const target = document.getElementById('page-public');
-    // 버튼 잠시 숨기기
-    btn.style.display = 'none';
+    const W = 2000;
+    const scale = W / target.scrollWidth;
+
     const canvas = await html2canvas(target, {
-      scale: 2000 / target.offsetWidth,
+      scale: scale,
       useCORS: true,
+      allowTaint: true,
       backgroundColor: '#0a0a0a',
-      logging: false
+      logging: false,
+      width: target.scrollWidth,
+      height: target.scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight,
+      imageTimeout: 0,
+      onclone: (doc) => {
+        // 캡처 대상 페이지 스타일 고정
+        const el = doc.getElementById('page-public');
+        if (el) {
+          el.style.overflow = 'visible';
+          el.style.height = 'auto';
+        }
+      }
     });
-    btn.style.display = '';
+
+    // 날짜시간 파일명 (YYYYMMDDHHMI 형식)
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
+
     const link = document.createElement('a');
-    link.download = '쉐키나_동선표.jpg';
+    link.download = `쉐키나_동선표_${ts}.jpg`;
     link.href = canvas.toDataURL('image/jpeg', 0.95);
     link.click();
   } catch(e) {
     alert('저장 실패: ' + e.message);
+  } finally {
+    btn.style.display = '';
+    btn.textContent = '📷 이미지로 저장';
+    btn.disabled = false;
+    // 애니메이션 복원
+    const s = document.getElementById('_capture_style');
+    if (s) s.remove();
   }
-  btn.textContent = '📷 이미지로 저장';
-  btn.disabled = false;
 }
 
 
