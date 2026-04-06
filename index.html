@@ -1543,7 +1543,6 @@ async function saveAsImage() {
   try {
     const { jsPDF } = window.jspdf;
 
-    // 페이지 너비 기준으로 비율 계산
     const pageW = target.scrollWidth;
     const pageH = target.scrollHeight;
 
@@ -1557,21 +1556,38 @@ async function saveAsImage() {
       width: pageW,
       height: pageH,
       windowWidth: pageW,
+      windowHeight: pageH,
+      // 색상 정확도 향상
+      foreignObjectRendering: false,
+      imageTimeout: 0,
+      onclone: (clonedDoc) => {
+        // 클론에서 애니메이션 정지
+        const style = clonedDoc.createElement('style');
+        style.textContent = '* { animation: none !important; transition: none !important; }';
+        clonedDoc.head.appendChild(style);
+        // 사진 비율 고정
+        clonedDoc.querySelectorAll('.seat-photo').forEach(img => {
+          img.style.objectFit = 'cover';
+          img.style.width = '97px';
+          img.style.height = '97px';
+        });
+      }
     });
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
 
-    // PDF 크기: A4 기준 또는 실제 비율로
-    const pdfW = 210; // mm (A4 너비)
+    // 비율 그대로 유지 (A4 너비 기준)
+    const pdfW = 210; // mm
     const pdfH = Math.round(pageH / pageW * pdfW);
 
     const pdf = new jsPDF({
-      orientation: pdfH > pdfW ? 'portrait' : 'landscape',
+      orientation: 'portrait',
       unit: 'mm',
-      format: [pdfW, pdfH]
+      format: [pdfW, pdfH],
+      compress: false
     });
 
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH, '', 'FAST');
     pdf.save(`쉐키나_동선표_${ts}.pdf`);
 
   } catch(e) {
