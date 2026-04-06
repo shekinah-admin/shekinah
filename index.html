@@ -1528,95 +1528,251 @@ function showToast(msg) {
 // ── 이미지 저장 ─────────────────────────────────
 async function saveAsImage() {
   const btn = document.getElementById('save-img-btn');
-  btn.textContent = '⏳ 저장 중...';
-  btn.disabled = true;
-
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
   const ts = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
 
-  try {
-    // 방법: 동선표 내용을 SVG foreignObject로 감싸서 Canvas에 그리기
-    const target = document.getElementById('page-public');
-    const W = target.scrollWidth;
-    const H = target.scrollHeight;
-    const SCALE = 2000 / W;
+  btn.textContent = '⏳ 그리는 중...';
+  btn.disabled = true;
 
-    // 버튼 임시 숨기기
-    btn.style.opacity = '0';
+  // Canvas에 동선표를 직접 그리기
+  const CW = 2000;
+  const MARGIN = 60;
+  const CARD_W = (CW - MARGIN*2 - 50) / 6;
+  const CARD_H = 200;
+  const SESSION_HEADER_H = 70;
+  const SESSION_GAP = 60;
+  const SEAT_GRID_PAD = 20;
+  const ROWS = 2;
 
-    // 인라인 스타일 수집
-    const getStyles = () => {
-      let css = '';
-      for (const sheet of document.styleSheets) {
-        try {
-          for (const rule of sheet.cssRules) {
-            css += rule.cssText + '\n';
+  // 전체 높이 계산
+  const sessions = state.sessions;
+  let totalH = 180; // 상단 헤더
+  sessions.forEach(sess => {
+    totalH += SESSION_HEADER_H + SEAT_GRID_PAD*2 + ROWS*CARD_H + SEAT_GRID_PAD + 60 + SESSION_GAP;
+  });
+  totalH += 100; // 하단 배지
+
+  const canvas = document.createElement('canvas');
+  canvas.width = CW;
+  canvas.height = totalH;
+  const ctx = canvas.getContext('2d');
+
+  // 배경
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, CW, totalH);
+
+  // 폰트 설정 헬퍼
+  const font = (size, weight='400') => `${weight} ${size}px 'Noto Sans KR', sans-serif`;
+
+  // 라운드 사각형 헬퍼
+  const roundRect = (x,y,w,h,r) => {
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+    ctx.closePath();
+  };
+
+  // 제목 영역
+  ctx.fillStyle = '#f0ece6';
+  ctx.font = font(48, '900');
+  ctx.textAlign = 'left';
+  const title = state.title || '쉐키나 동선표';
+  ctx.fillText(title, MARGIN, 90);
+  ctx.fillStyle = '#b0aa9e';
+  ctx.font = font(26, '300');
+  ctx.fillText(state.sub || '', MARGIN, 130);
+
+  let y = 180;
+
+  for (const sess of sessions) {
+    const colorHex = COLOR_HEX[sess.color] || '#e8705a';
+    const r = parseInt(colorHex.slice(1,3),16);
+    const g = parseInt(colorHex.slice(3,5),16);
+    const b = parseInt(colorHex.slice(5,7),16);
+
+    const cardW = CW - MARGIN*2;
+
+    // 세션 카드 배경
+    roundRect(MARGIN, y, cardW, SESSION_HEADER_H + SEAT_GRID_PAD*2 + ROWS*CARD_H + SEAT_GRID_PAD + 50, 20);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+
+    // 세션 헤더
+    roundRect(MARGIN, y, cardW, SESSION_HEADER_H, 20);
+    ctx.fillStyle = `rgba(${r},${g},${b},0.12)`;
+    ctx.fill();
+
+    // 세션 제목
+    ctx.fillStyle = '#2c2c2c';
+    ctx.font = font(32, '700');
+    ctx.textAlign = 'left';
+    ctx.fillText(sess.title || '', MARGIN + 24, y + 44);
+
+    // 시간 배지
+    const timeText = sess.time || '';
+    ctx.font = font(22, '500');
+    const timeW = ctx.measureText(timeText).width + 32;
+    const timeX = MARGIN + cardW - timeW - 16;
+    roundRect(timeX, y+14, timeW, 42, 21);
+    ctx.fillStyle = colorHex;
+    ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.fillText(timeText, timeX + timeW/2, y + 42);
+
+    y += SESSION_HEADER_H + SEAT_GRID_PAD;
+
+    // 자리 카드
+    const seats = sess.seats || [];
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < 6; col++) {
+        const idx = row*6 + col;
+        const seat = seats[idx] || { seat: String(idx+1), mic:'', name:'' };
+        const cx = MARGIN + col*(CARD_W+10);
+        const cy = y + row*(CARD_H+10);
+
+        // 자리 카드 배경
+        roundRect(cx, cy, CARD_W, CARD_H, 14);
+        ctx.fillStyle = '#fffdfc';
+        ctx.fill();
+        ctx.strokeStyle = '#f8e8de';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 위치 번호
+        const seatNum = `위치-${seat.seat||idx+1}`;
+        ctx.font = font(18, '500');
+        ctx.fillStyle = '#5a5a5a';
+        ctx.textAlign = 'center';
+        ctx.fillText(seatNum, cx + CARD_W/2 - (seat.mic?30:0), cy+26);
+
+        // 마이크 번호
+        if (seat.mic) {
+          const micText = `${seat.mic}-마이크`;
+          ctx.font = font(17, '700');
+          const micW = ctx.measureText(micText).width + 12;
+          roundRect(cx + CARD_W/2 + 5, cy+10, micW, 24, 6);
+          ctx.fillStyle = '#f5c0b4';
+          ctx.fill();
+          ctx.fillStyle = '#b83020';
+          ctx.fillText(micText, cx + CARD_W/2 + 5 + micW/2, cy+26);
+        }
+
+        // 원형 장식 (단순 원으로 표현)
+        const circleX = cx + CARD_W/2;
+        const circleY = cy + 95;
+        const circleR = 42;
+
+        // 외곽 그라데이션 링
+        const grad = ctx.createLinearGradient(circleX-circleR, circleY-circleR, circleX+circleR, circleY+circleR);
+        grad.addColorStop(0, '#5500aa');
+        grad.addColorStop(0.3, '#dd0055');
+        grad.addColorStop(0.6, '#dd7700');
+        grad.addColorStop(1, '#cc9900');
+        ctx.beginPath();
+        ctx.arc(circleX, circleY, circleR, 0, Math.PI*2);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        // 사진 또는 — (사진은 Canvas 보안상 생략, 이름만)
+        const photoSrc = memberStore[seat.name];
+        if (photoSrc && seat.name) {
+          // 사진 원형 클립
+          try {
+            await new Promise((res) => {
+              const img = new Image();
+              img.onload = () => {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(circleX, circleY, circleR-7, 0, Math.PI*2);
+                ctx.clip();
+                ctx.drawImage(img, circleX-(circleR-7), circleY-(circleR-7), (circleR-7)*2, (circleR-7)*2);
+                ctx.restore();
+                res();
+              };
+              img.onerror = () => res();
+              img.crossOrigin = 'anonymous';
+              img.src = photoSrc;
+            });
+          } catch(e) {}
+        } else {
+          // 빈자리 배경
+          ctx.beginPath();
+          ctx.arc(circleX, circleY, circleR-7, 0, Math.PI*2);
+          ctx.fillStyle = '#f5f0ea';
+          ctx.fill();
+          if (!seat.name) {
+            ctx.fillStyle = '#9a9a9a';
+            ctx.font = font(28, '400');
+            ctx.textAlign = 'center';
+            ctx.fillText('➖', circleX, circleY+10);
           }
-        } catch(e) {}
+        }
+
+        // 이름
+        if (seat.name) {
+          ctx.fillStyle = '#2c2c2c';
+          ctx.font = font(24, '700');
+          ctx.textAlign = 'center';
+          ctx.fillText(stripExt(seat.name), cx + CARD_W/2, cy + CARD_H - 16);
+        }
       }
-      return css;
-    };
+    }
 
-    const styles = getStyles();
-    const clone = target.cloneNode(true);
-    clone.style.width = W + 'px';
-    clone.style.height = H + 'px';
-    clone.style.overflow = 'visible';
-    clone.style.position = 'static';
-    clone.style.display = 'block';
+    y += ROWS*(CARD_H+10) + SEAT_GRID_PAD;
 
-    // 버튼 숨기기
-    const cloneBtn = clone.querySelector('#save-img-btn');
-    if (cloneBtn) cloneBtn.style.display = 'none';
+    // 메모
+    if (sess.notes && sess.notes.length) {
+      ctx.font = font(22, '400');
+      ctx.fillStyle = '#5a5a5a';
+      ctx.textAlign = 'left';
+      sess.notes.forEach((note, ni) => {
+        ctx.fillText(`${note.icon} ${note.text}`, MARGIN+20, y + ni*32);
+      });
+      y += sess.notes.length * 32 + 10;
+    }
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
-      <foreignObject width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml">
-          <style>${styles}</style>
-          ${clone.outerHTML}
-        </div>
-      </foreignObject>
-    </svg>`;
-
-    const blob = new Blob([svg], {type: 'image/svg+xml'});
-    const url = URL.createObjectURL(blob);
-
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.round(W * SCALE);
-      canvas.height = Math.round(H * SCALE);
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-
-      const link = document.createElement('a');
-      link.download = `쉐키나_동선표_${ts}.jpg`;
-      link.href = canvas.toDataURL('image/jpeg', 0.95);
-      link.click();
-
-      btn.style.opacity = '';
-      btn.textContent = '📷 이미지로 저장';
-      btn.disabled = false;
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      alert('저장 실패: 이미지 렌더링 오류');
-      btn.style.opacity = '';
-      btn.textContent = '📷 이미지로 저장';
-      btn.disabled = false;
-    };
-    img.src = url;
-
-  } catch(e) {
-    alert('저장 실패: ' + e.message);
-    btn.style.opacity = '';
-    btn.textContent = '📷 이미지로 저장';
-    btn.disabled = false;
+    y += SESSION_GAP;
   }
+
+  // 하단 배지 (드레스코드/휴가/장기휴가)
+  const badges = [
+    state.dresscode && `🎨 드레스코드: ${state.dresscode}`,
+    state.holiday && `🌈 휴가: ${state.holiday}`,
+    state.longholiday && `🙏 장기휴가: ${state.longholiday}`,
+  ].filter(Boolean);
+
+  if (badges.length) {
+    let bx = MARGIN;
+    badges.forEach(text => {
+      ctx.font = font(22, '400');
+      const bw = ctx.measureText(text).width + 32;
+      roundRect(bx, y, bw, 44, 22);
+      ctx.fillStyle = 'white';
+      ctx.fill();
+      ctx.strokeStyle = '#e8e0d5';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = '#2c2c2c';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, bx + bw/2, y+28);
+      bx += bw + 16;
+    });
+  }
+
+  // 다운로드
+  const link = document.createElement('a');
+  link.download = `쉐키나_동선표_${ts}.jpg`;
+  link.href = canvas.toDataURL('image/jpeg', 0.95);
+  link.click();
+
+  btn.textContent = '📷 이미지로 저장';
+  btn.disabled = false;
 }
 
 
