@@ -570,6 +570,20 @@
   }
   .mi-add-btn:hover { background: var(--coral); color: #fff; }
 
+
+  /* ── 별빛 배경 ── */
+  #star-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  #page-public, #page-admin, .nav {
+    position: relative;
+    z-index: 1;
+  }
+
 </style>
 <script type="module">
   // ════════════════════════════════════════════════════════
@@ -597,17 +611,49 @@
 
   window._fbReady = false;
 
-  // ── 실시간 리스너: state 변경 감지 ──────────────────
+  // ── 실시간 리스너: state + memberStore 변경 감지 ────
   window._fbInit = function() {
+    // state 실시간 리스너
     onSnapshot(STATE_REF, (snap) => {
       if (snap.exists() && snap.data().state) {
         const newState = JSON.parse(snap.data().state);
-        if (window._fbReady) window._applyCloudState(newState);
+        if (window._fbReady) {
+          window._applyCloudState(newState);
+        }
       }
-      window._fbReady = true;
+      if (!window._fbReady) {
+        window._fbReady = true;
+        // Firebase 준비 완료 → init 실행
+        if (typeof init === 'function') init();
+      }
     }, (err) => {
       console.warn('Firestore 오류:', err.message);
-      window._fbReady = true;
+      if (!window._fbReady) {
+        window._fbReady = true;
+        if (typeof init === 'function') init();
+      }
+    });
+
+    // memberStore 실시간 리스너 (사진 변경 감지)
+    onSnapshot(MEMBERS_COL, (snap) => {
+      if (!window._fbReady) return; // 초기화 전엔 무시
+      const result = {};
+      snap.forEach(d => {
+        const { filename, dataURL } = d.data();
+        if (filename && dataURL) result[filename] = dataURL;
+      });
+      if (Object.keys(result).length > 0) {
+        window._latestMembers = result;
+        // applyCloudState가 처리 중이 아닐 때만 즉시 반영
+        if (!dirty && typeof memberStore !== 'undefined') {
+          memberStore = result;
+          try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
+          if (typeof renderMemberList === 'function') renderMemberList();
+          if (typeof renderPublic === 'function') renderPublic();
+        }
+      }
+    }, (err) => {
+      console.warn('memberStore 리스너 오류:', err.message);
     });
   };
 
@@ -664,6 +710,7 @@
 </head>
 <body>
 
+<canvas id="star-canvas"></canvas>
 <div id="firebase-notice">
   ⚠️ Firebase 미설정 상태입니다. 클라우드 동기화가 작동하지 않아요.
   <a href="https://console.firebase.google.com" target="_blank">Firebase 콘솔</a>에서 설정 후 코드의 firebaseConfig를 교체하세요.
@@ -871,11 +918,16 @@ async function init() {
   showToast('✅ 불러오기 완료!');
 }
 
-// 클라우드에서 실시간 업데이트 수신 시 적용 (state만, memberStore는 건드리지 않음)
+// 클라우드에서 실시간 업데이트 수신 시 적용
 window._applyCloudState = function(newState) {
   if (dirty) return;
   state = newState;
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
+  // 최신 memberStore도 함께 반영
+  if (window._latestMembers && Object.keys(window._latestMembers).length > 0) {
+    memberStore = window._latestMembers;
+    try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
+  }
   renderAdmin();
   renderPublic();
   showToast('☁️ 다른 기기에서 업데이트됨');
@@ -1729,8 +1781,126 @@ function deleteMemberInfoRow(i) {
   markDirty();
 }
 
+
+// ══════════════ 별빛 배경 ══════════════
+(function() {
+  const canvas = document.getElementById('star-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let W, H;
+  const STAR_COUNT = 90;
+  const stars = [];
+  let tick = 0;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function randomStar() {
+    // 우측 상단 → 좌측 하단 방향: x는 감소, y는 증가
+    // 각도 40~55도, 방향은 왼쪽 아래 (cos 음수, sin 양수)
+    const deg = 40 + Math.random() * 15;
+    const rad = Math.PI / 180 * deg;
+    return {
+      x: Math.random() * W * 1.5,       // 오른쪽에서 시작
+      y: Math.random() * H - H * 0.3,
+      len: Math.random() * 70 + 30,
+      speed: Math.random() * 1.8 + 0.6,
+      angle: rad,
+      opacity: Math.random() * 0.55 + 0.15,
+      width: Math.random() * 1.2 + 0.4,
+      pulseOffset: Math.random() * Math.PI * 2, // 펄스 위상 랜덤
+      pulseSpeed: Math.random() * 0.08 + 0.06,  // 펄스 속도
+    };
+  }
+
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const s = randomStar();
+    s.y = Math.random() * H;
+    s.x = Math.random() * W;
+    stars.push(s);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    tick += 1;
+
+    for (const s of stars) {
+      // 우측 위 → 좌측 아래: x 감소, y 증가
+      s.x -= Math.cos(s.angle) * s.speed;
+      s.y += Math.sin(s.angle) * s.speed;
+
+      // 화면 밖(왼쪽 하단)으로 나가면 오른쪽 위에서 다시
+      if (s.y > H + s.len || s.x < -s.len) {
+        const newS = randomStar();
+        // 오른쪽 상단 랜덤 위치에서 시작
+        s.x = W * 0.3 + Math.random() * W * 1.2;
+        s.y = -s.len - Math.random() * H * 0.5;
+        s.len = newS.len;
+        s.speed = newS.speed;
+        s.opacity = newS.opacity;
+        s.width = newS.width;
+        s.angle = newS.angle;
+        s.pulseOffset = newS.pulseOffset;
+        s.pulseSpeed = newS.pulseSpeed;
+      }
+
+      // 선 그리기 (흐릿한 꼬리 → 밝은 머리)
+      const tailX = s.x + Math.cos(s.angle) * s.len;
+      const tailY = s.y - Math.sin(s.angle) * s.len;
+
+      const grad = ctx.createLinearGradient(tailX, tailY, s.x, s.y);
+      grad.addColorStop(0, `rgba(255,255,255,0)`);
+      grad.addColorStop(1, `rgba(255,255,255,${s.opacity})`);
+
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.lineTo(s.x, s.y);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = s.width;
+      ctx.stroke();
+
+      // 끝점 펄스 효과 (강하게)
+      const pulse = Math.sin(tick * s.pulseSpeed + s.pulseOffset);
+      const pulseScale = 1 + pulse * 0.9;         // 크기 ±90% 진동
+      const pulseAlpha = s.opacity * (1.2 + pulse * 0.8); // 밝기 강하게
+
+      // 외곽 글로우
+      const glowR = s.width * 5 * pulseScale;
+      const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
+      glow.addColorStop(0, `rgba(200,220,255,${Math.min(1, pulseAlpha * 0.9)})`);
+      glow.addColorStop(0.4, `rgba(180,200,255,${Math.min(1, pulseAlpha * 0.4)})`);
+      glow.addColorStop(1, `rgba(150,180,255,0)`);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, glowR, 0, Math.PI * 2);
+      ctx.fillStyle = glow;
+      ctx.fill();
+
+      // 중심 밝은 점
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.width * 1.5 * pulseScale, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, pulseAlpha)})`;
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
 // ══════════════ START ══════════════
-init();
+// Firebase module이 준비되면 _fbInit에서 init()을 호출함
+// Firebase가 없는 환경(로컬 등)을 위한 fallback
+setTimeout(() => {
+  if (!window._fbReady) {
+    console.warn('Firebase 준비 안됨 - 로컬 데이터로 시작');
+    init();
+  }
+}, 3000);
 </script>
 </body>
 </html>
