@@ -636,21 +636,23 @@
 
     // memberStore 실시간 리스너 (사진 변경 감지)
     onSnapshot(MEMBERS_COL, (snap) => {
-      if (!window._fbReady) return; // 초기화 전엔 무시
+      if (!window._fbReady) return;
       const result = {};
       snap.forEach(d => {
         const { filename, dataURL } = d.data();
         if (filename && dataURL) result[filename] = dataURL;
       });
+      // 항상 최신 상태 보관
       if (Object.keys(result).length > 0) {
         window._latestMembers = result;
-        // applyCloudState가 처리 중이 아닐 때만 즉시 반영
-        if (!dirty && typeof memberStore !== 'undefined') {
-          memberStore = result;
-          try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
-          if (typeof renderMemberList === 'function') renderMemberList();
-          if (typeof renderPublic === 'function') renderPublic();
-        }
+      }
+      // 업로드 중이면 덮어쓰기 금지!
+      if (window._isUploading) return;
+      if (Object.keys(result).length > 0 && typeof memberStore !== 'undefined') {
+        memberStore = result;
+        try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
+        if (typeof renderMemberList === 'function') renderMemberList();
+        if (typeof renderPublic === 'function') renderPublic();
       }
     }, (err) => {
       console.warn('memberStore 리스너 오류:', err.message);
@@ -1334,6 +1336,7 @@ function safeKey(filename) {
 async function handleMemberUpload(event) {
   const files = Array.from(event.target.files);
   if (!files.length) return;
+  window._isUploading = true; // 업로드 중 플래그 ON
   showToast(`⏳ ${files.length}개 업로드 중...`);
   let done = 0;
 
@@ -1363,6 +1366,13 @@ async function handleMemberUpload(event) {
 
   try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
 
+  // 업로드 완료 후 최신 상태로 동기화
+  window._isUploading = false; // 업로드 중 플래그 OFF
+  // _latestMembers가 있으면 병합 (다른 기기 사진 + 방금 올린 사진)
+  if (window._latestMembers) {
+    Object.assign(memberStore, window._latestMembers);
+  }
+  try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
   renderMemberList();
   state.sessions.forEach((_, si) => refreshSessionSelects(si));
   showToast(`✅ ${done}개 업로드 완료!`);
