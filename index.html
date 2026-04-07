@@ -1264,8 +1264,8 @@ function clearSession(si) {
   if (!confirm('이 세션의 모든 자리를 비우시겠습니까?\n(자리번호, 마이크, 선택된 이름이 모두 지워집니다)')) return;
   const sess = state.sessions[si];
   // 자리번호/마이크/이름 모두 빈값으로 (업로드된 사진은 유지)
-  sess.seats = Array.from({length: 12}, () => ({
-    seat: '',
+  sess.seats = Array.from({length: 12}, (_, idx) => ({
+    seat: String(idx + 1),
     mic: '',
     name: ''
   }));
