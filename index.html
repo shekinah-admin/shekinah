@@ -242,7 +242,7 @@
   .session-color-dot {
     width: 10px; height: 10px; border-radius: 50%; background: var(--coral); flex-shrink: 0;
   }
-  .admin-session-name { font-weight: 700; font-size: 14px; flex: 1; }
+  .admin-session-name { font-weight: 700; font-size: 14px; flex: 1; color: #2c2c2c; }
   .session-toggle { font-size: 12px; color: var(--text-light); transition: transform .2s; }
   .admin-session.collapsed .session-toggle { transform: rotate(-90deg); }
 
@@ -920,16 +920,11 @@ async function init() {
   showToast('✅ 불러오기 완료!');
 }
 
-// 클라우드에서 실시간 업데이트 수신 시 적용
+// 클라우드에서 실시간 업데이트 수신 시 적용 (state만 처리, memberStore 건드리지 않음)
 window._applyCloudState = function(newState) {
   if (dirty) return;
   state = newState;
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
-  // 최신 memberStore도 함께 반영
-  if (window._latestMembers && Object.keys(window._latestMembers).length > 0) {
-    memberStore = window._latestMembers;
-    try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
-  }
   renderAdmin();
   renderPublic();
   showToast('☁️ 다른 기기에서 업데이트됨');
@@ -1079,6 +1074,7 @@ function buildSessionEditor(sess, si) {
       <div class="session-color-dot" style="background:${COLOR_HEX[sess.color]}"></div>
       <div class="admin-session-name">${sess.title || '(제목 없음)'}</div>
       <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();copySession(${si})" style="margin-right:4px">복사</button>
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();clearSession(${si})" style="margin-right:4px;border-color:#d97706;color:#d97706;">비우기</button>
       <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();removeSession(${si})">삭제</button>
       <div class="session-toggle">▼</div>
     </div>
@@ -1263,6 +1259,23 @@ function addSession() {
   renderAdmin(); markDirty();
 }
 
+
+function clearSession(si) {
+  if (!confirm('이 세션의 모든 자리를 비우시겠습니까?\n(자리번호, 마이크, 선택된 이름이 모두 지워집니다)')) return;
+  const sess = state.sessions[si];
+  // 자리번호/마이크/이름 모두 빈값으로 (업로드된 사진은 유지)
+  sess.seats = Array.from({length: 12}, () => ({
+    seat: '',
+    mic: '',
+    name: ''
+  }));
+  // photoStore에서 이 세션의 자리 선택만 해제
+  for (let i = 0; i < 12; i++) delete photoStore[`${si}-${i}`];
+  renderAdmin();
+  markDirty();
+  showToast('🧹 세션이 비워졌습니다');
+}
+
 function copySession(si) {
   if (!confirm('이 세션을 복사하시겠습니까?')) return;
   const orig = state.sessions[si];
@@ -1426,13 +1439,18 @@ async function saveAll() {
 
   if (window._fbSave) {
     showToast('⏳ 저장 중...');
+    // 저장 중에 리스너가 memberStore 덮어쓰지 못하도록 차단
+    window._isUploading = true;
     const ok = await window._fbSave(state);
-    // memberStore도 함께 저장 (사진 보호)
+    // memberStore도 함께 저장
     if (window._fbSaveOneMember && Object.keys(memberStore).length > 0) {
       for (const [filename, dataURL] of Object.entries(memberStore)) {
         try { await window._fbSaveOneMember(safeKey(filename), filename, dataURL); } catch(e) {}
       }
     }
+    // 저장 완료 후 _latestMembers 업데이트하고 플래그 해제
+    window._latestMembers = Object.assign({}, memberStore);
+    window._isUploading = false;
     showToast(ok ? '✅ 저장 완료!' : '✅ 로컬 저장 완료');
   } else {
     showToast('✅ 저장되었습니다!');
