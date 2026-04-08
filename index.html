@@ -634,29 +634,8 @@
       }
     });
 
-    // memberStore 실시간 리스너 (사진 변경 감지)
-    onSnapshot(MEMBERS_COL, (snap) => {
-      if (!window._fbReady) return;
-      const result = {};
-      snap.forEach(d => {
-        const { filename, dataURL } = d.data();
-        if (filename && dataURL) result[filename] = dataURL;
-      });
-      // 항상 최신 상태 보관
-      if (Object.keys(result).length > 0) {
-        window._latestMembers = result;
-      }
-      // 업로드 중이면 덮어쓰기 금지!
-      if (window._isUploading) return;
-      if (Object.keys(result).length > 0 && typeof memberStore !== 'undefined') {
-        memberStore = result;
-        try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
-        if (typeof renderMemberList === 'function') renderMemberList();
-        if (typeof renderPublic === 'function') renderPublic();
-      }
-    }, (err) => {
-      console.warn('memberStore 리스너 오류:', err.message);
-    });
+    // memberStore는 실시간 리스너 없음 (init에서 한 번만 로드)
+    // 업로드/삭제는 직접 처리, 다른 기기 변경은 새로고침 시 반영
   };
 
   // ── state 저장 ──────────────────────────────────────
@@ -915,6 +894,8 @@ async function init() {
   }, 2000);
 
   if (!state.sessions.length) loadDefaultData();
+  // 저장된 state 보관 (동선표는 이 버전만 보여줌)
+  window._savedState = JSON.parse(JSON.stringify(state));
   renderAdmin();
   renderPublic();
   showToast('✅ 불러오기 완료!');
@@ -924,6 +905,7 @@ async function init() {
 window._applyCloudState = function(newState) {
   if (dirty) return;
   state = newState;
+  window._savedState = JSON.parse(JSON.stringify(state));
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
   renderAdmin();
   renderPublic();
@@ -1451,8 +1433,11 @@ async function saveAll() {
     // 저장 완료 후 _latestMembers 업데이트하고 플래그 해제
     window._latestMembers = Object.assign({}, memberStore);
     window._isUploading = false;
+    // 저장 완료 후 savedState 업데이트
+    window._savedState = JSON.parse(JSON.stringify(state));
     showToast(ok ? '✅ 저장 완료!' : '✅ 로컬 저장 완료');
   } else {
+    window._savedState = JSON.parse(JSON.stringify(state));
     showToast('✅ 저장되었습니다!');
   }
 }
@@ -1476,6 +1461,11 @@ function markDirty() {
 
 // ══════════════ PUBLIC RENDER ══════════════
 function renderPublic() {
+  // dirty 상태(미저장 편집 중)면 마지막 저장된 state로 렌더
+  const renderState = (dirty && window._savedState) ? window._savedState : state;
+  const _origState = state;
+  if (dirty && window._savedState) state = window._savedState;
+
   // Title
   const titleEl = document.getElementById('pub-week-title');
   if (titleEl) {
@@ -1502,7 +1492,9 @@ function renderPublic() {
   const badgesHTML = badges.length
     ? `<div class="global-info mid-badges">${badges.map(b=>`<div class="global-badge"><span class="badge-icon">${b.icon}</span><span>${b.label}</span></div>`).join('')}</div>`
     : '';
-  state.sessions.forEach((sess, si) => {
+  // renderState(저장된 state)의 sessions 사용
+  const sessionsToRender = (dirty && window._savedState) ? window._savedState.sessions : state.sessions;
+  sessionsToRender.forEach((sess, si) => {
     container.appendChild(buildSessionCard(sess, si));
     // 세 번째 세션(index 2) 다음에 배지 삽입
     if (si === 2 && badges.length) {
@@ -1588,11 +1580,19 @@ function showPage(id, btn) {
   document.getElementById('page-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'public') renderPublic();
+  // dirty였으면 state 원래대로 복원
+  if (dirty && window._savedState && typeof _origState !== 'undefined') {
+    state = _origState;
+  }
 }
 
 function previewPublic() {
   readAdminFields();
+  // 미리보기는 현재 편집 중인 내용 그대로 보여줌 (dirty 무시)
+  const _dirty = dirty;
+  dirty = false;
   renderPublic();
+  dirty = _dirty;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-public').classList.add('active');
