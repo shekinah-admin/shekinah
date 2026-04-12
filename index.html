@@ -894,8 +894,6 @@ async function init() {
   }, 2000);
 
   if (!state.sessions.length) loadDefaultData();
-  // 저장된 state 보관 (동선표는 이 버전만 보여줌)
-  window._savedState = JSON.parse(JSON.stringify(state));
   renderAdmin();
   renderPublic();
   showToast('✅ 불러오기 완료!');
@@ -905,7 +903,6 @@ async function init() {
 window._applyCloudState = function(newState) {
   if (dirty) return;
   state = newState;
-  window._savedState = JSON.parse(JSON.stringify(state));
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
   renderAdmin();
   renderPublic();
@@ -1416,8 +1413,6 @@ async function saveAll() {
   try { localStorage.setItem('shekinah_photos', JSON.stringify(photoStore)); } catch(e) {}
   try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
 
-  // _savedState 먼저 업데이트 후 dirty=false → 그래야 renderPublic이 최신 state 반영
-  window._savedState = JSON.parse(JSON.stringify(state));
   dirty = false;
   document.getElementById('save-bar').classList.remove('visible');
   renderPublic();
@@ -1431,7 +1426,6 @@ async function saveAll() {
         try { await window._fbSaveOneMember(safeKey(filename), filename, dataURL); } catch(e) {}
       }
     }
-    window._latestMembers = Object.assign({}, memberStore);
     window._isUploading = false;
     showToast(ok ? '✅ 저장 완료!' : '✅ 로컬 저장 완료');
   } else {
@@ -1458,20 +1452,18 @@ function markDirty() {
 
 // ══════════════ PUBLIC RENDER ══════════════
 function renderPublic() {
-  // dirty 상태(미저장 편집 중)면 마지막 저장된 state로 렌더
-  const renderState = (dirty && window._savedState) ? window._savedState : state;
-  if (dirty && window._savedState) state = window._savedState;
-
   // Title
   const titleEl = document.getElementById('pub-week-title');
   if (titleEl) {
-    const match = state.title.match(/(쉐키나\s*)(.+)/);
-    titleEl.textContent = match ? match[2] : state.title;
+    const match = state.title && state.title.match(/(쉐키나\s*)(.+)/);
+    titleEl.textContent = match ? match[2] : (state.title || '');
   }
-  document.getElementById('pub-week-sub').textContent = state.sub;
+  const subEl = document.getElementById('pub-week-sub');
+  if (subEl) subEl.textContent = state.sub || '';
 
   // Global badges
   const gi = document.getElementById('pub-global-info');
+  if (!gi) return;
   gi.innerHTML = '';
   const badges = [
     state.dresscode && { icon:'🎨', label:`드레스코드: ${state.dresscode}` },
@@ -1484,13 +1476,13 @@ function renderPublic() {
 
   // Sessions
   const container = document.getElementById('pub-sessions');
+  if (!container) return;
   container.innerHTML = '';
   const badgesHTML = badges.length
     ? `<div class="global-info mid-badges">${badges.map(b=>`<div class="global-badge"><span class="badge-icon">${b.icon}</span><span>${b.label}</span></div>`).join('')}</div>`
     : '';
-  // renderState(저장된 state)의 sessions 사용
+  state.sessions.forEach((sess, si) => {
     container.appendChild(buildSessionCard(sess, si));
-    // 세 번째 세션(index 2) 다음에 배지 삽입
     if (si === 2 && badges.length) {
       const midDiv = document.createElement('div');
       midDiv.innerHTML = badgesHTML;
@@ -1498,6 +1490,7 @@ function renderPublic() {
     }
   });
 }
+
 
 function buildSessionCard(sess, si) {
   const card = document.createElement('div');
