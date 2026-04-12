@@ -613,16 +613,29 @@
 
   // ── 실시간 리스너: state + memberStore 변경 감지 ────
   window._fbInit = function() {
-    // state 실시간 리스너 (다른 기기에서 변경 시 자동 반영)
+    // state 실시간 리스너
     onSnapshot(STATE_REF, (snap) => {
-      if (!window._fbReady) return;
       if (snap.exists() && snap.data().state) {
         const newState = JSON.parse(snap.data().state);
-        window._applyCloudState(newState);
+        if (window._fbReady) {
+          window._applyCloudState(newState);
+        }
+      }
+      if (!window._fbReady) {
+        window._fbReady = true;
+        // Firebase 준비 완료 → init 실행
+        if (typeof init === 'function') init();
       }
     }, (err) => {
-      console.warn('Firestore 리스너 오류:', err.message);
+      console.warn('Firestore 오류:', err.message);
+      if (!window._fbReady) {
+        window._fbReady = true;
+        if (typeof init === 'function') init();
+      }
     });
+
+    // memberStore는 실시간 리스너 없음 (init에서 한 번만 로드)
+    // 업로드/삭제는 직접 처리, 다른 기기 변경은 새로고침 시 반영
   };
 
   // ── state 저장 ──────────────────────────────────────
@@ -670,12 +683,7 @@
     } catch(e) { console.warn('단원 로드 실패:', e); return null; }
   };
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    window._fbInit();  // 실시간 리스너 등록
-    window._fbReady = true;
-    // init() 호출 - Firebase 함수들이 이미 window에 등록됨
-    if (typeof init === 'function') await init();
-  });
+  document.addEventListener('DOMContentLoaded', () => window._fbInit());
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -893,15 +901,11 @@ async function init() {
 
 // 클라우드에서 실시간 업데이트 수신 시 적용 (state만 처리, memberStore 건드리지 않음)
 window._applyCloudState = function(newState) {
-  // 편집 중이면 무시 (내 변경사항 보호)
   if (dirty) return;
   state = newState;
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
+  renderAdmin();
   renderPublic();
-  // 관리자 페이지가 열려있을 때만 renderAdmin
-  if (document.getElementById('page-admin').classList.contains('active')) {
-    renderAdmin();
-  }
   showToast('☁️ 다른 기기에서 업데이트됨');
 };
 
@@ -1552,15 +1556,19 @@ const ADMIN_PW = '2033';
 function showPage(id, btn) {
   if (id === 'admin') {
     const pw = prompt('🔒 관리자 비밀번호를 입력하세요:');
-    if (pw === null) return;
-    if (pw !== ADMIN_PW) { alert('비밀번호가 틀렸습니다.'); return; }
+    if (pw === null) return; // 취소
+    if (pw !== ADMIN_PW) {
+      alert('비밀번호가 틀렸습니다.');
+      return;
+    }
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
   if (btn) btn.classList.add('active');
   if (id === 'public') renderPublic();
-  if (id === 'admin') renderAdmin();
+  // dirty였으면 state 원래대로 복원
+  }
 }
 
 function previewPublic() {
@@ -1898,7 +1906,14 @@ function deleteMemberInfoRow(i) {
 })();
 
 // ══════════════ START ══════════════
-// init()은 Firebase module의 DOMContentLoaded에서 호출됨
+// Firebase module이 준비되면 _fbInit에서 init()을 호출함
+// Firebase가 없는 환경(로컬 등)을 위한 fallback
+setTimeout(() => {
+  if (!window._fbReady) {
+    console.warn('Firebase 준비 안됨 - 로컬 데이터로 시작');
+    init();
+  }
+}, 3000);
 </script>
 </body>
 </html>
