@@ -1415,29 +1415,26 @@ async function saveAll() {
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
   try { localStorage.setItem('shekinah_photos', JSON.stringify(photoStore)); } catch(e) {}
   try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
-  renderPublic();
+
+  // _savedState 먼저 업데이트 후 dirty=false → 그래야 renderPublic이 최신 state 반영
+  window._savedState = JSON.parse(JSON.stringify(state));
   dirty = false;
   document.getElementById('save-bar').classList.remove('visible');
+  renderPublic();
 
   if (window._fbSave) {
     showToast('⏳ 저장 중...');
-    // 저장 중에 리스너가 memberStore 덮어쓰지 못하도록 차단
     window._isUploading = true;
     const ok = await window._fbSave(state);
-    // memberStore도 함께 저장
     if (window._fbSaveOneMember && Object.keys(memberStore).length > 0) {
       for (const [filename, dataURL] of Object.entries(memberStore)) {
         try { await window._fbSaveOneMember(safeKey(filename), filename, dataURL); } catch(e) {}
       }
     }
-    // 저장 완료 후 _latestMembers 업데이트하고 플래그 해제
     window._latestMembers = Object.assign({}, memberStore);
     window._isUploading = false;
-    // 저장 완료 후 savedState 업데이트
-    window._savedState = JSON.parse(JSON.stringify(state));
     showToast(ok ? '✅ 저장 완료!' : '✅ 로컬 저장 완료');
   } else {
-    window._savedState = JSON.parse(JSON.stringify(state));
     showToast('✅ 저장되었습니다!');
   }
 }
@@ -1463,7 +1460,6 @@ function markDirty() {
 function renderPublic() {
   // dirty 상태(미저장 편집 중)면 마지막 저장된 state로 렌더
   const renderState = (dirty && window._savedState) ? window._savedState : state;
-  const _origState = state;
   if (dirty && window._savedState) state = window._savedState;
 
   // Title
@@ -1493,8 +1489,6 @@ function renderPublic() {
     ? `<div class="global-info mid-badges">${badges.map(b=>`<div class="global-badge"><span class="badge-icon">${b.icon}</span><span>${b.label}</span></div>`).join('')}</div>`
     : '';
   // renderState(저장된 state)의 sessions 사용
-  const sessionsToRender = (dirty && window._savedState) ? window._savedState.sessions : state.sessions;
-  sessionsToRender.forEach((sess, si) => {
     container.appendChild(buildSessionCard(sess, si));
     // 세 번째 세션(index 2) 다음에 배지 삽입
     if (si === 2 && badges.length) {
@@ -1581,14 +1575,12 @@ function showPage(id, btn) {
   if (btn) btn.classList.add('active');
   if (id === 'public') renderPublic();
   // dirty였으면 state 원래대로 복원
-  if (dirty && window._savedState && typeof _origState !== 'undefined') {
-    state = _origState;
   }
 }
 
 function previewPublic() {
   readAdminFields();
-  // 미리보기는 현재 편집 중인 내용 그대로 보여줌 (dirty 무시)
+  // 미리보기: dirty 임시 해제해서 현재 편집 내용 보여줌
   const _dirty = dirty;
   dirty = false;
   renderPublic();
