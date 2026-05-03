@@ -677,11 +677,14 @@
   };
 
   document.addEventListener('DOMContentLoaded', async () => {
-    window._fbInit();  // 실시간 리스너 등록
+    window._fbInit();   // 실시간 리스너 등록
     window._fbReady = true;
-    // init() 호출 - Firebase 함수들이 이미 window에 등록됨
+    // Firebase 함수들이 window에 등록된 상태에서 init() 호출
     if (typeof init === 'function') await init();
   });
+
+  // Firebase 모듈 로드 완료 신호
+  window._fbModuleReady = true;
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -868,18 +871,24 @@ async function init() {
   }
 
   // 2) memberStore 로드 (Firebase 우선 → localStorage fallback)
-  //    Firebase에 없거나 실패하면 localStorage 사용
   let cloudMembers = null;
   if (window._fbLoadMembers) {
-    try { cloudMembers = await window._fbLoadMembers(); } catch(e) {}
+    // 최대 3회 재시도 (네트워크 지연 대비)
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        cloudMembers = await window._fbLoadMembers();
+        if (cloudMembers && Object.keys(cloudMembers).length > 0) break;
+      } catch(e) {
+        console.warn(`memberStore 로드 시도 ${attempt+1} 실패:`, e);
+      }
+      if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+    }
   }
   if (cloudMembers && Object.keys(cloudMembers).length > 0) {
     memberStore = cloudMembers;
-    try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
-  } else {
-    const savedMembers = localStorage.getItem('shekinah_members');
-    if (savedMembers) { try { memberStore = JSON.parse(savedMembers); } catch(e) {} }
+    // localStorage에 저장 안 함 (용량 초과 방지)
   }
+  // localStorage fallback 제거 - Firestore가 유일한 소스
 
   // 3) photoStore (레거시, localStorage만)
   const savedPhotos = localStorage.getItem('shekinah_photos');
@@ -895,6 +904,21 @@ async function init() {
   renderAdmin();
   renderPublic();
   showToast('✅ 불러오기 완료!');
+
+  // memberStore가 비어있으면 백그라운드에서 한 번 더 시도
+  if (Object.keys(memberStore).length === 0 && window._fbLoadMembers) {
+    setTimeout(async () => {
+      try {
+        const retry = await window._fbLoadMembers();
+        if (retry && Object.keys(retry).length > 0) {
+          memberStore = retry;
+          renderMemberList();
+          renderPublic();
+          showToast('🖼 사진 불러오기 완료!');
+        }
+      } catch(e) {}
+    }, 2000);
+  }
 }
 
 // 클라우드에서 실시간 업데이트 수신 시 적용 (state만 처리, memberStore 건드리지 않음)
@@ -1351,10 +1375,10 @@ async function handleMemberUpload(event) {
       compressed = await compressImage(rawDataURL, 200, 0.55);
     }
 
-    // 3. 로컬 저장
+    // 3. 메모리에만 저장 (localStorage 용량 초과 방지)
     memberStore[file.name] = compressed;
 
-    // 4. Firestore에 저장 (문서 1개 = 사진 1장)
+    // 4. Firestore에 저장
     if (window._fbSaveOneMember) {
       await window._fbSaveOneMember(safeKey(file.name), file.name, compressed);
     }
@@ -1363,15 +1387,7 @@ async function handleMemberUpload(event) {
     showToast(`⏳ ${done}/${files.length} 처리 중...`);
   }
 
-  try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
-
-  // 업로드 완료 후 최신 상태로 동기화
-  window._isUploading = false; // 업로드 중 플래그 OFF
-  // _latestMembers가 있으면 병합 (다른 기기 사진 + 방금 올린 사진)
-  if (window._latestMembers) {
-    Object.assign(memberStore, window._latestMembers);
-  }
-  try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
+  window._isUploading = false;
   renderMemberList();
   state.sessions.forEach((_, si) => refreshSessionSelects(si));
   showToast(`✅ ${done}개 업로드 완료!`);
@@ -1390,7 +1406,6 @@ async function deleteMember(name) {
       }
     });
   });
-  try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
   // Firestore 단원 문서 삭제
   if (window._fbDeleteOneMember) await window._fbDeleteOneMember(safeKey(name));
   // state도 동기화 (자리 초기화 반영)
@@ -1418,7 +1433,6 @@ async function saveAll() {
   // 로컬 저장
   try { localStorage.setItem('shekinah_state', JSON.stringify(state)); } catch(e) {}
   try { localStorage.setItem('shekinah_photos', JSON.stringify(photoStore)); } catch(e) {}
-  try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
 
   dirty = false;
   document.getElementById('save-bar').classList.remove('visible');
@@ -1433,8 +1447,7 @@ async function saveAll() {
         try { await window._fbSaveOneMember(safeKey(filename), filename, dataURL); } catch(e) {}
       }
     }
-    // memberStore 로컬 저장도 갱신
-    try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
+
     window._isUploading = false;
     showToast(ok ? '✅ 저장 완료!' : '✅ 로컬 저장 완료');
   } else {
