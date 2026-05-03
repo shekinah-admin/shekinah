@@ -646,6 +646,12 @@
   // key: 파일명(특수문자 제거한 안전한 ID), value: 압축 dataURL
   window._fbSaveOneMember = async function(safeKey, filename, dataURL) {
     try {
+      // Firestore 문서 1MB 제한 체크
+      const sizeKB = Math.round(dataURL.length * 0.75 / 1024);
+      if (sizeKB > 900) {
+        console.warn(`사진 크기 초과: ${filename} (${sizeKB}KB) - 더 압축 필요`);
+        return;
+      }
       await setDoc(doc(MEMBERS_COL, safeKey), { filename, dataURL });
     } catch(e) { console.error('사진 저장 실패:', e); }
   };
@@ -1338,7 +1344,12 @@ async function handleMemberUpload(event) {
     });
 
     // 2. Canvas로 압축 (400x400 이하, JPEG 70%)
-    const compressed = await compressImage(rawDataURL, 700, 0.7);
+    // Firestore 1MB 제한: 300px로 충분 (동선표에서 97px로만 표시)
+    let compressed = await compressImage(rawDataURL, 300, 0.65);
+    // 혹시 아직 크면 더 압축
+    if (compressed.length > 700000) {
+      compressed = await compressImage(rawDataURL, 200, 0.55);
+    }
 
     // 3. 로컬 저장
     memberStore[file.name] = compressed;
@@ -1422,6 +1433,8 @@ async function saveAll() {
         try { await window._fbSaveOneMember(safeKey(filename), filename, dataURL); } catch(e) {}
       }
     }
+    // memberStore 로컬 저장도 갱신
+    try { localStorage.setItem('shekinah_members', JSON.stringify(memberStore)); } catch(e) {}
     window._isUploading = false;
     showToast(ok ? '✅ 저장 완료!' : '✅ 로컬 저장 완료');
   } else {
