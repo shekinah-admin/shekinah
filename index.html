@@ -645,15 +645,18 @@
   // ── 단원 사진 저장 (Firestore, 문서 1개/1장) ────────
   // key: 파일명(특수문자 제거한 안전한 ID), value: 압축 dataURL
   window._fbSaveOneMember = async function(safeKey, filename, dataURL) {
+    const sizeKB = Math.round(dataURL.length * 0.75 / 1024);
+    console.log(`저장 시도: ${filename} | key: ${safeKey} | ${sizeKB}KB`);
+    if (sizeKB > 900) {
+      console.error(`❌ 크기 초과 저장 안함: ${filename} (${sizeKB}KB)`);
+      return;
+    }
     try {
-      // Firestore 문서 1MB 제한 체크
-      const sizeKB = Math.round(dataURL.length * 0.75 / 1024);
-      if (sizeKB > 900) {
-        console.warn(`사진 크기 초과: ${filename} (${sizeKB}KB) - 더 압축 필요`);
-        return;
-      }
       await setDoc(doc(MEMBERS_COL, safeKey), { filename, dataURL });
-    } catch(e) { console.error('사진 저장 실패:', e); }
+      console.log(`✅ 저장 완료: ${filename}`);
+    } catch(e) {
+      console.error(`❌ Firestore 저장 실패: ${filename}`, e.code, e.message);
+    }
   };
 
   // ── 단원 사진 삭제 ──────────────────────────────────
