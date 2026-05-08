@@ -1351,7 +1351,19 @@ function compressImage(dataURL, maxSize=400, quality=0.7) {
 
 // 파일명을 Firestore 문서 ID로 쓸 수 있게 안전하게 변환
 function safeKey(filename) {
-  return filename.replace(/[^a-zA-Z0-9가-힣_-]/g, '_').substring(0, 100);
+  // Firestore 문서 ID: 영문/숫자/언더스코어만 허용
+  // 한글 등 비ASCII 문자는 charCode 기반 문자열로 변환
+  let key = '';
+  for (const ch of filename) {
+    if (/[a-zA-Z0-9_-]/.test(ch)) {
+      key += ch;
+    } else if (ch === '.') {
+      key += '_';
+    } else {
+      key += ch.charCodeAt(0).toString(36);
+    }
+  }
+  return key.substring(0, 100);
 }
 
 async function handleMemberUpload(event) {
