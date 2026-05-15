@@ -616,58 +616,21 @@
 
   .px-flower-wrap {
     position: relative; width: 97px; height: 97px;
-    margin: 0 auto 8px; overflow: hidden; border-radius: 50%;
-  }
-  .px-flower-ring {
-    position: absolute; top: 0; left: 0;
-    width: 97px; height: 97px; border-radius: 50%;
-    animation: px-spin 18s linear infinite;
-    z-index: 1;
-  }
-  /* 꽃잎 8개: pseudo + box-shadow 트릭으로 원형 꽃잎 표현 */
-  .px-flower-ring::before,
-  .px-flower-ring::after {
-    content: '';
-    position: absolute;
+    margin: 0 auto 8px;
     border-radius: 50%;
+    overflow: hidden;
   }
-  .px-flower-ring::before {
-    width: 22px; height: 22px;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    /* 8개 꽃잎: box-shadow로 배치 */
-    box-shadow:
-      0px -30px 0 2px var(--px-petal),
-      21px -21px 0 2px var(--px-petal),
-      30px 0px 0 2px var(--px-petal),
-      21px 21px 0 2px var(--px-petal),
-      0px 30px 0 2px var(--px-petal),
-      -21px 21px 0 2px var(--px-petal),
-      -30px 0px 0 2px var(--px-petal),
-      -21px -21px 0 2px var(--px-petal);
-    background: transparent;
-  }
-  /* 꽃잎 outline (검정 테두리) */
-  .px-flower-ring::after {
-    width: 22px; height: 22px;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow:
-      0px -30px 0 3.5px #3a2010,
-      21px -21px 0 3.5px #3a2010,
-      30px 0px 0 3.5px #3a2010,
-      21px 21px 0 3.5px #3a2010,
-      0px 30px 0 3.5px #3a2010,
-      -21px 21px 0 3.5px #3a2010,
-      -30px 0px 0 3.5px #3a2010,
-      -21px -21px 0 3.5px #3a2010;
-    background: transparent;
-    z-index: -1;
+  .px-flower-svg {
+    position: absolute; top: 0; left: 0;
+    width: 97px; height: 97px;
+    animation: px-spin 18s linear infinite;
+    transform-origin: 48.5px 48.5px;
+    z-index: 1;
   }
   .px-photo-inner {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 55px; height: 55px; border-radius: 50%;
+    width: 58px; height: 58px; border-radius: 50%;
     overflow: hidden; z-index: 3;
     border: 3px solid #3a2010;
     background: #e8d8c0;
@@ -1766,11 +1729,10 @@ function buildSessionCard(sess, si) {
     // ig-ring-3: 자리마다 시작각도 다르게
     const off3 = (offsets1[i] + 45) % 360;
     const ring3Style = `background:conic-gradient(from ${off3}deg, #ff00cc 0%, #ffaa00 25%, #00ffcc 50%, #aa00ff 75%, #ff00cc 100%)`;
-    // 레트로 픽셀 테마일 때 픽셀 꽃 링 사용
-    const pxColorClass = `px-c${i % 5}`;
+    // 레트로 픽셀 테마일 때 SVG 꽃 링 사용
     const photoEl = (state.theme === 'retro-pixel')
       ? `<div class="px-flower-wrap">
-           <div class="px-flower-ring ${pxColorClass}"></div>
+           ${makePxFlowerSVG(i % 5)}
            <div class="px-photo-inner">${photoSrc ? `<img src="${photoSrc}" alt="${seat.name}">` : '➖'}</div>
          </div>`
       : `<div class="photo-ring-wrap"><div class="ig-ring-3" style="${ring3Style}"></div><div class="ig-ring-1" style="${ring1Style}"></div><div class="ig-ring-2" style="${ring2Style}"></div><div class="ig-mask"></div>${innerPhoto}</div>`;
@@ -2341,6 +2303,30 @@ function renderThemeSelector() {
 
 
 // ══════════════ 레트로 픽셀 테마 효과 ══════════════
+// SVG 꽃 링 생성 함수
+function makePxFlowerSVG(colorIdx) {
+  const COLORS = ['#ffffff','#fff4a0','#ffdd00','#c8f0c0','#b8e4ff'];
+  const col = COLORS[colorIdx % COLORS.length];
+  const cx = 48.5, cy = 48.5;
+  // ORBIT_R=38: 꽃잎 중심이 원 경계(r=48.5) 바깥에 위치
+  // overflow:hidden으로 절반만 보여 → v12 시안과 동일
+  const ORBIT = 38, PR = 12;
+  let petals = '';
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const px2 = cx + Math.cos(a) * ORBIT;
+    const py2 = cy + Math.sin(a) * ORBIT;
+    // 외곽선
+    petals += `<circle cx="${px2.toFixed(2)}" cy="${py2.toFixed(2)}" r="${PR+2.5}" fill="#3a2010"/>`;
+    // 꽃잎 본체
+    petals += `<circle cx="${px2.toFixed(2)}" cy="${py2.toFixed(2)}" r="${PR}" fill="${col}"/>`;
+    // 하이라이트
+    const hx = (px2 - PR*0.28).toFixed(2), hy = (py2 - PR*0.28).toFixed(2);
+    petals += `<circle cx="${hx}" cy="${hy}" r="${(PR*0.3).toFixed(2)}" fill="rgba(255,255,255,0.65)"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="px-flower-svg" viewBox="0 0 97 97" width="97" height="97">${petals}</svg>`;
+}
+
 let _pixelFlowerRAF = null;
 let _pixelFlowerCanvas = null;
 let _pixelRingRAF = null;
