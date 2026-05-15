@@ -2057,7 +2057,32 @@ const THEMES = {
     starEffect: 'bubble',
     starColor: '0,220,255',
     glowColor: '0,180,255',
-  }
+  },
+  'retro-pixel': {
+    name: '🌸 레트로 픽셀',
+    bg: '#f5f0e8',
+    navBg: 'rgba(245,240,232,0.96)',
+    navBorder: '#3a2010',
+    titleColor: '#3a2010',
+    subColor: '#9a8060',
+    sessionCardBg: '#faf6ee',
+    sessionCardBorder: '#3a2010',
+    seatCardBg: '#fff8f0',
+    seatCardBorder: '#3a2010',
+    seatNameColor: '#3a2010',
+    maskColor: '#fff8f0',
+    ring1: 'none',
+    ring2: 'none',
+    ring3: 'none',
+    badgeBg: '#faf6ee',
+    badgeBorder: '#3a2010',
+    badgeColor: '#3a2010',
+    noteColor: '#5a3e28',
+    pinIcon: '✦',
+    starEffect: 'pixel-flower',
+    starColor: '255,255,255',
+    glowColor: '255,220,0',
+  },
 };
 
 function applyTheme(themeKey) {
@@ -2127,6 +2152,15 @@ function applyTheme(themeKey) {
   document.querySelectorAll('.theme-card').forEach(card => {
     card.classList.toggle('selected', card.dataset.theme === themeKey);
   });
+
+  // 레트로 픽셀 테마 전용 처리
+  if (themeKey === 'retro-pixel') {
+    _startPixelFlowerEffect();
+    document.getElementById('star-canvas').style.display = 'none';
+  } else {
+    _stopPixelFlowerEffect();
+    document.getElementById('star-canvas').style.display = '';
+  }
 }
 
 function selectTheme(themeKey) {
@@ -2168,6 +2202,183 @@ function renderThemeSelector() {
     container.appendChild(card);
   });
 }
+
+
+// ══════════════ 레트로 픽셀 테마 효과 ══════════════
+let _pixelFlowerRAF = null;
+let _pixelFlowerCanvas = null;
+let _pixelRingRAF = null;
+let _pixelRingTick = 0;
+
+// 자리별 랜덤 색상 고정
+const PIXEL_RING_PALETTE = ['#ffffff','#fff4a0','#ffdd00','#c8f0c0','#b8e4ff'];
+const _pixelSeatColors = Array.from({length:12}, () =>
+  PIXEL_RING_PALETTE[Math.floor(Math.random()*PIXEL_RING_PALETTE.length)]
+);
+
+function _shadeHex(hex, amt) {
+  let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  r=Math.max(0,Math.min(255,r+amt));g=Math.max(0,Math.min(255,g+amt));b=Math.max(0,Math.min(255,b+amt));
+  return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+// 픽셀 꽃 링 그리기
+function _drawPixelFlowerRing(canvas, angle, seatIdx) {
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const W = canvas.width, cx = W/2, cy = W/2;
+  ctx.clearRect(0, 0, W, W);
+  const petalCol = _pixelSeatColors[seatIdx % _pixelSeatColors.length];
+  const PETAL_COUNT = 8, ORBIT_R = W*0.338, PETAL_R = W*0.116;
+  // 외곽선
+  for (let i=0;i<PETAL_COUNT;i++) {
+    const a=angle+(i/PETAL_COUNT)*Math.PI*2;
+    const px2=cx+Math.cos(a)*ORBIT_R, py2=cy+Math.sin(a)*ORBIT_R;
+    ctx.beginPath(); ctx.arc(px2,py2,PETAL_R+2,0,Math.PI*2);
+    ctx.fillStyle='#3a2010'; ctx.fill();
+  }
+  // 꽃잎
+  for (let i=0;i<PETAL_COUNT;i++) {
+    const a=angle+(i/PETAL_COUNT)*Math.PI*2;
+    const px2=cx+Math.cos(a)*ORBIT_R, py2=cy+Math.sin(a)*ORBIT_R;
+    const R=PETAL_R, GRID=3;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(px2,py2,R,0,Math.PI*2); ctx.clip();
+    for(let gx=Math.floor((px2-R)/GRID)*GRID;gx<px2+R+GRID;gx+=GRID){
+      for(let gy=Math.floor((py2-R)/GRID)*GRID;gy<py2+R+GRID;gy+=GRID){
+        const dx=gx+GRID/2-px2,dy=gy+GRID/2-py2;
+        if(dx*dx+dy*dy>R*R) continue;
+        const isLight=(Math.floor(gx/GRID)+Math.floor(gy/GRID))%2===0;
+        ctx.fillStyle=isLight?petalCol:_shadeHex(petalCol,-5);
+        ctx.fillRect(gx,gy,GRID-0.5,GRID-0.5);
+        ctx.fillStyle='rgba(160,130,80,0.05)';
+        ctx.fillRect(gx,gy,GRID-0.5,0.5); ctx.fillRect(gx,gy,0.5,GRID-0.5);
+      }
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(px2-PETAL_R*0.28,py2-PETAL_R*0.28,PETAL_R*0.28,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.fill();
+  }
+}
+
+// 픽셀 꽃비 스프라이트 생성
+function _makePixelRainFlower(petalCount, petalCol, centerCol) {
+  const PETAL_R=5, ORBIT=7, MARGIN=PETAL_R+2;
+  const S=(ORBIT+PETAL_R+MARGIN)*2+2;
+  const off=document.createElement('canvas'); off.width=S; off.height=S;
+  const c=off.getContext('2d'); c.imageSmoothingEnabled=false;
+  const cx=S/2, cy=S/2;
+  for(let i=0;i<petalCount;i++){
+    const a=(i/petalCount)*Math.PI*2;
+    const px2=cx+Math.cos(a)*ORBIT, py2=cy+Math.sin(a)*ORBIT;
+    c.beginPath();c.arc(px2,py2,PETAL_R+1.5,0,Math.PI*2);c.fillStyle='#2a1a08';c.fill();
+    c.beginPath();c.arc(px2,py2,PETAL_R,0,Math.PI*2);c.fillStyle=petalCol;c.fill();
+    c.beginPath();c.arc(px2-1.2,py2-1.2,PETAL_R*0.32,0,Math.PI*2);c.fillStyle='rgba(255,255,255,0.6)';c.fill();
+  }
+  c.beginPath();c.arc(cx,cy,4.5,0,Math.PI*2);c.fillStyle='#2a1a08';c.fill();
+  c.beginPath();c.arc(cx,cy,3.5,0,Math.PI*2);c.fillStyle=centerCol;c.fill();
+  c.beginPath();c.arc(cx-1,cy-1,1.3,0,Math.PI*2);c.fillStyle='rgba(255,255,255,0.5)';c.fill();
+  return {img:off, size:S};
+}
+
+const _RAIN_SPRITES = [
+  _makePixelRainFlower(6,'#ffffff','#ffcc00'),
+  _makePixelRainFlower(5,'#ffffff','#ff9900'),
+  _makePixelRainFlower(6,'#fff8cc','#ffee44'),
+  _makePixelRainFlower(5,'#f0ffee','#ffcc00'),
+  _makePixelRainFlower(6,'#ffffff','#ffaa22'),
+  _makePixelRainFlower(5,'#fffce0','#ffcc00'),
+];
+
+let _rainDrops = null;
+function _initRainDrops(W, H) {
+  _rainDrops = [];
+  for(let i=0;i<24;i++){
+    const v=_RAIN_SPRITES[Math.floor(Math.random()*_RAIN_SPRITES.length)];
+    const scale=0.85+Math.random()*0.7;
+    _rainDrops.push({
+      x:Math.random()*W, y:Math.random()*H,
+      speed:Math.random()*0.85+0.3,
+      variant:v, scale, renderSize:v.size*scale,
+      rot:Math.random()*Math.PI*2,
+      rotSpeed:0.008+Math.random()*0.012,
+      alpha:0.6+Math.random()*0.35,
+    });
+  }
+}
+
+function _startPixelFlowerEffect() {
+  if (_pixelFlowerCanvas) return; // 이미 실행 중
+  // 꽃비 캔버스 생성
+  _pixelFlowerCanvas = document.createElement('canvas');
+  _pixelFlowerCanvas.id = 'pixel-flower-rain';
+  _pixelFlowerCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;';
+  document.body.insertBefore(_pixelFlowerCanvas, document.body.firstChild);
+  _pixelFlowerCanvas.width = window.innerWidth;
+  _pixelFlowerCanvas.height = window.innerHeight;
+  _initRainDrops(_pixelFlowerCanvas.width, _pixelFlowerCanvas.height);
+
+  const fx = _pixelFlowerCanvas.getContext('2d');
+  function drawRain() {
+    if (!_pixelFlowerCanvas) return;
+    fx.clearRect(0,0,_pixelFlowerCanvas.width,_pixelFlowerCanvas.height);
+    _rainDrops.forEach(d => {
+      d.y += d.speed; d.rot += d.rotSpeed;
+      if(d.y > _pixelFlowerCanvas.height+80){
+        d.y=-80; d.x=Math.random()*_pixelFlowerCanvas.width;
+        d.variant=_RAIN_SPRITES[Math.floor(Math.random()*_RAIN_SPRITES.length)];
+        d.renderSize=d.variant.size*d.scale;
+      }
+      fx.save(); fx.globalAlpha=d.alpha;
+      fx.translate(d.x+d.renderSize/2, d.y+d.renderSize/2);
+      fx.rotate(d.rot);
+      fx.drawImage(d.variant.img,-d.renderSize/2,-d.renderSize/2,d.renderSize,d.renderSize);
+      fx.restore();
+    });
+    fx.globalAlpha=1;
+    _pixelFlowerRAF = requestAnimationFrame(drawRain);
+  }
+  drawRain();
+
+  // 링 애니메이션 시작
+  function animateRings() {
+    _pixelRingTick += 0.0088;
+    document.querySelectorAll('.photo-ring-wrap').forEach((wrap, i) => {
+      let rc = wrap.querySelector('.pixel-ring-canvas');
+      if (!rc) {
+        rc = document.createElement('canvas');
+        rc.className = 'pixel-ring-canvas';
+        rc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;image-rendering:pixelated;';
+        rc.width = 97; rc.height = 97;
+        wrap.style.position = 'relative';
+        wrap.style.overflow = 'hidden';
+        wrap.insertBefore(rc, wrap.firstChild);
+      }
+      _drawPixelFlowerRing(rc, _pixelRingTick + i*0.52, i);
+    });
+    _pixelRingRAF = requestAnimationFrame(animateRings);
+  }
+  animateRings();
+
+  // 배경색/격자 적용
+  document.body.style.background = '#f5f0e8';
+  document.getElementById('page-public').style.background = 'transparent';
+}
+
+function _stopPixelFlowerEffect() {
+  if (_pixelFlowerCanvas) {
+    cancelAnimationFrame(_pixelFlowerRAF);
+    _pixelFlowerCanvas.remove();
+    _pixelFlowerCanvas = null;
+  }
+  if (_pixelRingRAF) {
+    cancelAnimationFrame(_pixelRingRAF);
+    _pixelRingRAF = null;
+  }
+  // 픽셀 링 캔버스 제거
+  document.querySelectorAll('.pixel-ring-canvas').forEach(c => c.remove());
+}
+
 
 // ══════════════ START ══════════════
 // init()은 Firebase module의 DOMContentLoaded에서 호출됨
