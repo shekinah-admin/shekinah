@@ -610,6 +610,180 @@
     background: white;
   }
 
+
+  /* ── 레트로 픽셀 테마 꽃 링 ── */
+  @keyframes px-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  .px-flower-wrap {
+    position: relative; width: 97px; height: 97px;
+    margin: 0 auto 8px; overflow: hidden; border-radius: 50%;
+  }
+  .px-flower-ring {
+    position: absolute; top: 0; left: 0;
+    width: 97px; height: 97px; border-radius: 50%;
+    animation: px-spin 18s linear infinite;
+    z-index: 1;
+  }
+  /* 꽃잎 8개: pseudo + box-shadow 트릭으로 원형 꽃잎 표현 */
+  .px-flower-ring::before,
+  .px-flower-ring::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+  }
+  .px-flower-ring::before {
+    width: 22px; height: 22px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    /* 8개 꽃잎: box-shadow로 배치 */
+    box-shadow:
+      0px -30px 0 2px var(--px-petal),
+      21px -21px 0 2px var(--px-petal),
+      30px 0px 0 2px var(--px-petal),
+      21px 21px 0 2px var(--px-petal),
+      0px 30px 0 2px var(--px-petal),
+      -21px 21px 0 2px var(--px-petal),
+      -30px 0px 0 2px var(--px-petal),
+      -21px -21px 0 2px var(--px-petal);
+    background: transparent;
+  }
+  /* 꽃잎 outline (검정 테두리) */
+  .px-flower-ring::after {
+    width: 22px; height: 22px;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow:
+      0px -30px 0 3.5px #3a2010,
+      21px -21px 0 3.5px #3a2010,
+      30px 0px 0 3.5px #3a2010,
+      21px 21px 0 3.5px #3a2010,
+      0px 30px 0 3.5px #3a2010,
+      -21px 21px 0 3.5px #3a2010,
+      -30px 0px 0 3.5px #3a2010,
+      -21px -21px 0 3.5px #3a2010;
+    background: transparent;
+    z-index: -1;
+  }
+  .px-photo-inner {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 55px; height: 55px; border-radius: 50%;
+    overflow: hidden; z-index: 3;
+    border: 3px solid #3a2010;
+    background: #e8d8c0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .px-photo-inner img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* 레트로 픽셀 세션 카드 스타일 오버라이드 */
+  body.theme-retro-pixel .session-card {
+    background: #faf6ee !important;
+    border-radius: 0 !important;
+    border: 4px solid #3a2010 !important;
+    box-shadow: 5px 5px 0 #3a2010 !important;
+    margin-bottom: 28px !important;
+  }
+  body.theme-retro-pixel .session-card:hover {
+    transform: none !important;
+  }
+  body.theme-retro-pixel .session-header {
+    background: none !important;
+    border-bottom: 4px solid #3a2010 !important;
+    padding: 10px 16px !important;
+    position: relative;
+    overflow: hidden;
+  }
+  /* 타이틀바 노랑 픽셀 패턴 */
+  body.theme-retro-pixel .session-header::before {
+    content: '';
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      90deg,
+      #f0b800 0px, #f0b800 8px,
+      #f8d000 8px, #f8d000 12px,
+      #e8a800 12px, #e8a800 16px,
+      #f0b800 16px, #f0b800 20px
+    );
+    z-index: 0;
+  }
+  body.theme-retro-pixel .session-header > * {
+    position: relative; z-index: 1;
+  }
+  body.theme-retro-pixel .session-title {
+    color: #3a2010 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 13px !important;
+  }
+  body.theme-retro-pixel .session-time {
+    border-radius: 0 !important;
+    border: 3px solid #3a2010 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    padding: 5px 10px !important;
+  }
+  body.theme-retro-pixel .seat-card {
+    background: #fff8f0 !important;
+    border-radius: 0 !important;
+    border: 3px solid #3a2010 !important;
+    box-shadow: none !important;
+  }
+  body.theme-retro-pixel .seat-card:hover {
+    transform: none !important;
+    border-color: #3a2010 !important;
+  }
+  body.theme-retro-pixel .seat-num {
+    border-radius: 0 !important;
+    background: #f0c000 !important;
+    color: #3a2010 !important;
+    border: 2px solid #3a2010 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 6px !important;
+  }
+  body.theme-retro-pixel .mic-num {
+    border-radius: 0 !important;
+    background: #f5c898 !important;
+    color: #804020 !important;
+    border: 2px solid #3a2010 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 6px !important;
+  }
+  body.theme-retro-pixel .seat-name {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 8px !important;
+    color: #3a2010 !important;
+    font-weight: 900 !important;
+  }
+  body.theme-retro-pixel .note-item {
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    color: #5a3e28 !important;
+  }
+  body.theme-retro-pixel .global-badge {
+    border-radius: 0 !important;
+    border: 3px solid #3a2010 !important;
+    font-family: 'Press Start 2P', monospace !important;
+    font-size: 9px !important;
+    background: #faf6ee !important;
+    color: #3a2010 !important;
+  }
+  body.theme-retro-pixel .week-title {
+    font-family: 'Press Start 2P', monospace !important;
+    color: #3a2010 !important;
+  }
+  body.theme-retro-pixel .week-sub {
+    font-family: 'Press Start 2P', monospace !important;
+    color: #9a8060 !important;
+  }
+  body.theme-retro-pixel #page-public {
+    background: transparent !important;
+  }
+  /* 픽셀 꽃잎 색상 변수 - 자리별 */
+  .px-c0 { --px-petal: #ffffff; }
+  .px-c1 { --px-petal: #fff4a0; }
+  .px-c2 { --px-petal: #ffdd00; }
+  .px-c3 { --px-petal: #c8f0c0; }
+  .px-c4 { --px-petal: #b8e4ff; }
+
 </style>
 <script type="module">
   // ════════════════════════════════════════════════════════
@@ -1592,7 +1766,14 @@ function buildSessionCard(sess, si) {
     // ig-ring-3: 자리마다 시작각도 다르게
     const off3 = (offsets1[i] + 45) % 360;
     const ring3Style = `background:conic-gradient(from ${off3}deg, #ff00cc 0%, #ffaa00 25%, #00ffcc 50%, #aa00ff 75%, #ff00cc 100%)`;
-    const photoEl = `<div class="photo-ring-wrap"><div class="ig-ring-3" style="${ring3Style}"></div><div class="ig-ring-1" style="${ring1Style}"></div><div class="ig-ring-2" style="${ring2Style}"></div><div class="ig-mask"></div>${innerPhoto}</div>`;
+    // 레트로 픽셀 테마일 때 픽셀 꽃 링 사용
+    const pxColorClass = `px-c${i % 5}`;
+    const photoEl = (state.theme === 'retro-pixel')
+      ? `<div class="px-flower-wrap">
+           <div class="px-flower-ring ${pxColorClass}"></div>
+           <div class="px-photo-inner">${photoSrc ? `<img src="${photoSrc}" alt="${seat.name}">` : '➖'}</div>
+         </div>`
+      : `<div class="photo-ring-wrap"><div class="ig-ring-3" style="${ring3Style}"></div><div class="ig-ring-1" style="${ring1Style}"></div><div class="ig-ring-2" style="${ring2Style}"></div><div class="ig-mask"></div>${innerPhoto}</div>`;
     const isEmpty = !seat.name;
     seatsHTML += `
       <div class="seat-card ${isEmpty ? 'seat-empty' : ''}">
@@ -2008,56 +2189,6 @@ const THEMES = {
     starColor: '255,255,255',
     glowColor: '200,220,255',
   },
-  'cherry-blossom': {
-    name: '🌸 벚꽃 흩날림',
-    bg: '#1a0a14',
-    navBg: 'rgba(26,10,20,0.92)',
-    navBorder: 'rgba(255,182,193,0.15)',
-    titleColor: '#ffe0ec',
-    subColor: 'rgba(255,224,236,0.6)',
-    sessionCardBg: '#fff5f8',
-    sessionCardBorder: 'rgba(255,100,150,0.12)',
-    seatCardBg: '#fff8fb',
-    seatCardBorder: '#f9c8d8',
-    seatNameColor: '#3d1a28',
-    maskColor: '#1a0a14',
-    ring1: 'conic-gradient(from 0deg, #ff6ba8 0%, #ff9ec4 25%, #ffb8d6 50%, #ff6ba8 75%, #dd3388 100%)',
-    ring2: 'conic-gradient(from 90deg, #ff4499 0%, #ffaacc 35%, #ff88bb 65%, #cc2277 100%)',
-    ring3: 'conic-gradient(from 45deg, #ffccee 0%, #ff88bb 25%, #ff44aa 50%, #ffbbdd 75%, #ffccee 100%)',
-    badgeBg: 'rgba(255,245,248,0.9)',
-    badgeBorder: '#f9c8d8',
-    badgeColor: '#3d1a28',
-    noteColor: '#7a3a5a',
-    pinIcon: '🌸',
-    starEffect: 'petal',
-    starColor: '255,182,193',
-    glowColor: '255,150,180',
-  },
-  'ocean-deep': {
-    name: '🌊 깊은 바다',
-    bg: '#020d1a',
-    navBg: 'rgba(2,13,26,0.92)',
-    navBorder: 'rgba(0,200,255,0.12)',
-    titleColor: '#d0f0ff',
-    subColor: 'rgba(208,240,255,0.6)',
-    sessionCardBg: '#f0faff',
-    sessionCardBorder: 'rgba(0,150,200,0.12)',
-    seatCardBg: '#f5fbff',
-    seatCardBorder: '#b8e4f4',
-    seatNameColor: '#0a2a3a',
-    maskColor: '#020d1a',
-    ring1: 'conic-gradient(from 0deg, #0044aa 0%, #0088dd 25%, #00ccff 50%, #0066bb 75%, #0044aa 100%)',
-    ring2: 'conic-gradient(from 90deg, #0033aa 0%, #00aadd 35%, #00ddff 65%, #0055cc 100%)',
-    ring3: 'conic-gradient(from 45deg, #00ffee 0%, #0088ff 25%, #0044cc 50%, #00ccff 75%, #00ffee 100%)',
-    badgeBg: 'rgba(240,250,255,0.9)',
-    badgeBorder: '#b8e4f4',
-    badgeColor: '#0a2a3a',
-    noteColor: '#1a5a7a',
-    pinIcon: '🪸',
-    starEffect: 'bubble',
-    starColor: '0,220,255',
-    glowColor: '0,180,255',
-  },
   'retro-pixel': {
     name: '🌸 레트로 픽셀',
     bg: '#f5f0e8',
@@ -2088,6 +2219,11 @@ const THEMES = {
 function applyTheme(themeKey) {
   const t = THEMES[themeKey] || THEMES['night-meteor'];
   const canvas = document.getElementById('star-canvas');
+
+  // body 테마 클래스 설정
+  document.body.className = document.body.className
+    .replace(/theme-\S+/g, '').trim();
+  document.body.classList.add(`theme-${themeKey}`);
 
   // 배경
   document.body.style.background = t.bg;
@@ -2340,29 +2476,8 @@ function _startPixelFlowerEffect() {
   }
   drawRain();
 
-  // 링 애니메이션 시작
-  function animateRings() {
-    _pixelRingTick += 0.0088;
-    document.querySelectorAll('.photo-ring-wrap').forEach((wrap, i) => {
-      let rc = wrap.querySelector('.pixel-ring-canvas');
-      if (!rc) {
-        rc = document.createElement('canvas');
-        rc.className = 'pixel-ring-canvas';
-        rc.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;image-rendering:pixelated;';
-        rc.width = 97; rc.height = 97;
-        wrap.style.position = 'relative';
-        wrap.style.overflow = 'hidden';
-        wrap.insertBefore(rc, wrap.firstChild);
-      }
-      _drawPixelFlowerRing(rc, _pixelRingTick + i*0.52, i);
-    });
-    _pixelRingRAF = requestAnimationFrame(animateRings);
-  }
-  animateRings();
-
-  // 배경색/격자 적용
+  // 배경색 적용 (CSS 테마 클래스로 처리)
   document.body.style.background = '#f5f0e8';
-  document.getElementById('page-public').style.background = 'transparent';
 }
 
 function _stopPixelFlowerEffect() {
