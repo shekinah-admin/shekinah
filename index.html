@@ -2147,8 +2147,9 @@ function deleteMemberInfoRow(i) {
       ctx.fill();
     }
 
-    requestAnimationFrame(draw);
+    window._starRAF = requestAnimationFrame(draw);
   }
+  window._starRAF = requestAnimationFrame(draw);
   draw();
 })();
 
@@ -2284,6 +2285,8 @@ function applyTheme(themeKey) {
   if (themeKey === 'retro-pixel') {
     _startPixelFlowerEffect();
     document.getElementById('star-canvas').style.display = 'none';
+    // 유성우 애니메이션 완전 정지
+    if (window._starRAF) { cancelAnimationFrame(window._starRAF); window._starRAF = null; }
     // 이모지를 텍스트로 교체 (픽셀 폰트로 표현)
     setTimeout(() => {
       // 배지 아이콘
@@ -2326,6 +2329,11 @@ function applyTheme(themeKey) {
   } else {
     _stopPixelFlowerEffect();
     document.getElementById('star-canvas').style.display = '';
+    // 유성우 애니메이션 재시작
+    if (!window._starRAF) {
+      const cv = document.getElementById('star-canvas');
+      if (cv && cv._restart) cv._restart();
+    }
   }
 }
 
