@@ -644,26 +644,28 @@
   body.theme-retro-pixel .session-header::before{
     content:'' !important; position:absolute !important;
     top:0 !important;left:0 !important;width:100% !important;height:100% !important;
-    /* 불규칙한 큰 픽셀 도트: 여러 크기 혼합 */
+    /* 4px 정사각형 픽셀 도트 - 여러 레이어로 불규칙하게 */
     background-image:
-      radial-gradient(circle, rgba(255,255,255,0.92) 3px, transparent 3px),
-      radial-gradient(circle, rgba(255,255,255,0.75) 2px, transparent 2px),
-      radial-gradient(circle, rgba(255,255,255,0.85) 4px, transparent 4px) !important;
-    background-size: 18px 14px, 11px 17px, 23px 11px !important;
-    background-position: 0 0, 6px 8px, 13px 3px !important;
+      linear-gradient(rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.9) 100%),
+      linear-gradient(rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.9) 100%),
+      linear-gradient(rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.9) 100%) !important;
+    background-size: 4px 4px, 4px 4px, 4px 4px !important;
+    background-position: 0 0, 9px 11px, 17px 5px !important;
+    background-repeat: no-repeat !important;
+    image-rendering: pixelated !important;
     -webkit-mask-image: linear-gradient(90deg,
       transparent 0%,
       rgba(0,0,0,0.0) 15%,
-      rgba(0,0,0,0.25) 35%,
-      rgba(0,0,0,0.6) 55%,
-      rgba(0,0,0,0.88) 75%,
+      rgba(0,0,0,0.3) 38%,
+      rgba(0,0,0,0.65) 58%,
+      rgba(0,0,0,0.9) 78%,
       rgba(0,0,0,1) 100%) !important;
     mask-image: linear-gradient(90deg,
       transparent 0%,
       rgba(0,0,0,0.0) 15%,
-      rgba(0,0,0,0.25) 35%,
-      rgba(0,0,0,0.6) 55%,
-      rgba(0,0,0,0.88) 75%,
+      rgba(0,0,0,0.3) 38%,
+      rgba(0,0,0,0.65) 58%,
+      rgba(0,0,0,0.9) 78%,
       rgba(0,0,0,1) 100%) !important;
     pointer-events:none !important;z-index:1 !important;
   }
@@ -692,7 +694,7 @@
   }
   body.theme-retro-pixel .seat-name{
     font-family:'Press Start 2P',monospace !important;
-    font-size:14px !important;color:#3a2010 !important;font-weight:900 !important;
+    font-size:17px !important;color:#3a2010 !important;font-weight:900 !important;
   }
   body.theme-retro-pixel .note-item{
     font-family:'Press Start 2P',monospace !important;font-size:15px !important;color:#5a3e28 !important;
@@ -1713,7 +1715,7 @@ function renderPublic() {
     if (showBadge) {
       const badgeRow = document.createElement('div');
       badgeRow.className = 'px-session-badges';
-      badgeRow.innerHTML = badges.map(b=>`<div class="global-badge px-badge"><span class="badge-icon">${b.icon}</span><span>${b.label}</span></div>`).join('');
+      badgeRow.innerHTML = badges.map(b=>`<div class="global-badge px-badge"><span class="badge-icon" style="font-style:normal">▶</span><span>${b.label}</span></div>`).join('');
       container.appendChild(badgeRow);
     }
     // 세션 간 간격
@@ -2287,10 +2289,7 @@ function applyTheme(themeKey) {
       // 배지 아이콘
       document.querySelectorAll('.badge-icon, .global-badge .badge-icon').forEach(el => {
         const txt = el.textContent.trim();
-        if(txt.includes('🎨')) el.textContent = '[셔츠]';
-        else if(txt.includes('🌈')) el.textContent = '[태양]';
-        else if(txt.includes('🙏')) el.textContent = '[하트]';
-        else if(txt.includes('👗')) el.textContent = '[옷]';
+        if(txt.includes('🎨')||txt.includes('🌈')||txt.includes('🙏')||txt.includes('👗')) el.textContent = '▶';
       });
       // pin-icon
       document.querySelectorAll('.pin-icon').forEach(el => {
@@ -2371,6 +2370,39 @@ function renderThemeSelector() {
 }
 
 
+
+function _drawPixelTitlebars() {
+  document.querySelectorAll('.session-header').forEach(header => {
+    let cv = header.querySelector('.px-tbar-canvas');
+    if (!cv) {
+      cv = document.createElement('canvas');
+      cv.className = 'px-tbar-canvas';
+      cv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;image-rendering:pixelated;';
+      header.appendChild(cv);
+    }
+    const W = header.offsetWidth || 800, H = header.offsetHeight || 38;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    const S = 4; // 정사각형 픽셀 크기
+    const GAP = 2; // 픽셀 간격
+    // 불규칙 오프셋 시드
+    const offsets = [[0,0],[9,11],[17,5],[4,15],[22,2],[13,8]];
+    offsets.forEach(([ox,oy]) => {
+      for (let x = ox; x < W; x += (S+GAP)*3 + Math.floor(x/50)) {
+        for (let y = oy; y < H; y += (S+GAP)*2) {
+          const ratio = x / W;
+          const alpha = Math.random() < ratio ? 0.88 : 0;
+          if (alpha > 0) {
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            ctx.fillRect(x, y, S, S);
+          }
+        }
+      }
+    });
+  });
+}
+
 // ══════════════ 레트로 픽셀 테마 효과 (v12) ══════════════
 
 // 자리별 고정 색상
@@ -2412,7 +2444,7 @@ function _drawFlowerRing(canvas, angle, seatIdx) {
         const isLight=(Math.floor(gx/GRID)+Math.floor(gy/GRID))%2===0;
         ctx.fillStyle=isLight?petalCol:_shadeHex(petalCol,-5);
         ctx.fillRect(gx,gy,GRID-0.5,GRID-0.5);
-        ctx.fillStyle='rgba(160,130,80,0.025)';
+        ctx.fillStyle='rgba(200,200,200,0.15)';
         ctx.fillRect(gx,gy,GRID-0.5,0.5);ctx.fillRect(gx,gy,0.5,GRID-0.5);
       }
     }
@@ -2515,6 +2547,8 @@ function _startPixelFlowerEffect() {
   animateRings();
 
   document.body.style.background='#f5f0e8';
+  // 타이틀바 정사각형 도트 canvas
+  _drawPixelTitlebars();
 }
 
 function _stopPixelFlowerEffect() {
