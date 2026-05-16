@@ -737,7 +737,16 @@
       if (!window._fbReady) return;
       if (snap.exists() && snap.data().state) {
         const newState = JSON.parse(snap.data().state);
-        window._applyCloudState(newState);
+        // _applyCloudState가 준비될 때까지 대기
+        if (typeof window._applyCloudState === 'function') {
+          window._applyCloudState(newState);
+        } else {
+          setTimeout(() => {
+            if (typeof window._applyCloudState === 'function') {
+              window._applyCloudState(newState);
+            }
+          }, 500);
+        }
       }
     }, (err) => {
       console.warn('Firestore 리스너 오류:', err.message);
@@ -2409,13 +2418,7 @@ function _stopPixelFlowerEffect() {
   if(_pixelRingRAF){cancelAnimationFrame(_pixelRingRAF);_pixelRingRAF=null;}
   document.querySelectorAll('canvas.px-petal-ring').forEach(c=>c.remove());
 }
-  if (_pixelRingRAF) {
-    cancelAnimationFrame(_pixelRingRAF);
-    _pixelRingRAF = null;
-  }
-  // 픽셀 링 캔버스 제거
-  document.querySelectorAll('.pixel-ring-canvas').forEach(c => c.remove());
-}
+
 
 
 // ══════════════ START ══════════════
