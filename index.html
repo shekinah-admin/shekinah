@@ -766,7 +766,7 @@
     background: #f8fdff !important; border-radius: 0 !important;
     border: 1.5px solid #1a3a5c !important;
     box-shadow: 2px 2px 0 #1a3a5c !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 24px !important;
   }
   body.theme-summer-pixel .session-card:hover { transform: none !important; box-shadow: 5px 5px 0 #1a3a5c !important; }
   body.theme-summer-pixel .session-header {
@@ -783,12 +783,22 @@
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
   body.theme-summer-pixel { background: #dff3fb !important; }
-  body.theme-summer-pixel #pub-sessions { background: transparent !important; }
-  body.theme-summer-pixel #page-public { background: transparent !important; }
+  body.theme-summer-pixel .page,
+  body.theme-summer-pixel #pub-sessions,
+  body.theme-summer-pixel #page-public {
+    background: transparent !important;
+  }
   body.theme-summer-pixel .nav {
     background: rgba(223,243,251,0.96) !important;
     border-bottom: 4px solid #1a3a5c !important;
     font-family: 'Press Start 2P', monospace !important;
+  }
+  body.theme-summer-pixel .nav-logo img {
+    filter: brightness(0) !important; /* 흰 로고 → 검정 */
+    background: transparent !important;
+  }
+  body.theme-summer-pixel .nav-logo {
+    background: transparent !important;
   }
   body.theme-summer-pixel .nav-logo,
   body.theme-summer-pixel .week-title {
@@ -803,7 +813,7 @@
     background: #f8fdff !important; border-radius: 0 !important;
     border: 1.5px solid #1a3a5c !important;
     box-shadow: 2px 2px 0 #1a3a5c !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 24px !important;
   }
   body.theme-summer-pixel .session-card:hover { transform: none !important; box-shadow: 5px 5px 0 #1a3a5c !important; }
   body.theme-summer-pixel .session-header {
@@ -833,21 +843,21 @@
   body.theme-summer-pixel .seat-numbers { display: flex; gap: 3px; justify-content: center; margin-bottom: 8px; }
   body.theme-summer-pixel .seat-num {
     border-radius: 0 !important; background: #ffe082 !important;
-    color: #1a3a5c !important; border: 2px solid #1a3a5c !important;
-    font-family: 'Press Start 2P', monospace !important; font-size: 9px !important;
+    color: #1a3a5c !important; border: 1.5px solid #1a3a5c !important;
+    font-family: 'Press Start 2P', monospace !important; font-size: 10px !important; padding: 2px 5px !important;
   }
   body.theme-summer-pixel .mic-num {
     border-radius: 0 !important; background: #80deea !important;
-    color: #006064 !important; border: 2px solid #1a3a5c !important;
-    font-family: 'Press Start 2P', monospace !important; font-size: 9px !important;
+    color: #006064 !important; border: 1.5px solid #1a3a5c !important;
+    font-family: 'Press Start 2P', monospace !important; font-size: 10px !important; padding: 2px 5px !important;
   }
   body.theme-summer-pixel .seat-name {
     font-family: 'Press Start 2P', monospace !important;
-    font-size: 11px !important; color: #1a3a5c !important; font-weight: 900 !important;
+    font-size: 13px !important; color: #1a3a5c !important; font-weight: 900 !important; margin-top: 4px !important;
   }
   body.theme-summer-pixel .note-item {
     font-family: 'Press Start 2P', monospace !important;
-    font-size: 12px !important; color: #005a8a !important;
+    font-size: 13px !important; color: #005a8a !important;
   }
   body.theme-summer-pixel .global-badge,
   body.theme-summer-pixel .px-badge {
@@ -856,13 +866,13 @@
     font-size: 12px !important; background: #f0faff !important; color: #1a3a5c !important;
     padding: 10px 14px !important;
   }
-  body.theme-summer-pixel /* summer 배지 - 섹션 바로 아래 */
+  /* summer 배지 - 섹션 바로 아래 */
   body.theme-summer-pixel .px-session-badges {
     display: flex !important;
     gap: 8px !important;
     flex-wrap: wrap !important;
     padding: 6px 0 0 0 !important;
-    margin-top: 4px !important;
+    margin-top: 6px !important;
   }
 
 </style>
@@ -2860,7 +2870,7 @@ const _EXTRA_SPRITES=[0,1,2,3].map(i=>_makeFruitSprite(i));
 function _startSummerRain() {
   _summerRainCanvas = document.createElement('canvas');
   _summerRainCanvas.id = 'summer-rain-canvas';
-  _summerRainCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;';
+  _summerRainCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:3;pointer-events:none;';
   document.body.insertBefore(_summerRainCanvas, document.body.firstChild);
   const W=window.innerWidth, H=window.innerHeight;
   _summerRainCanvas.width=W; _summerRainCanvas.height=H;
