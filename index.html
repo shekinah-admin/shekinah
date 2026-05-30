@@ -777,59 +777,81 @@
     z-index: 0 !important; pointer-events: none !important;
   }
   /* 타이틀바 canvas는 JS로 그림 */
-  body.theme-summer-pixel .session-title {
-    color: #fff !important; font-family: 'Press Start 2P', monospace !important;
-    font-size: 17px !important; font-weight: 900 !important;
-    text-shadow: 2px 2px 0 #0a2a4a !important; position: relative; z-index: 1;
+  /* summer-pixel: Press Start 2P 폰트 + 네이비 테두리 전체 적용 */
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+  body.theme-summer-pixel { background: #dff3fb !important; }
+  body.theme-summer-pixel #page-public { background: #dff3fb !important; }
+  body.theme-summer-pixel .nav {
+    background: rgba(223,243,251,0.96) !important;
+    border-bottom: 4px solid #1a3a5c !important;
+    font-family: 'Press Start 2P', monospace !important;
   }
+  body.theme-summer-pixel .nav-logo,
+  body.theme-summer-pixel .week-title {
+    font-family: 'Press Start 2P', monospace !important;
+    color: #1a3a5c !important; font-size: 22px !important; font-weight: 900 !important;
+  }
+  body.theme-summer-pixel .week-sub {
+    font-family: 'Press Start 2P', monospace !important;
+    color: #0277bd !important; font-size: 12px !important; margin-bottom: 20px !important;
+  }
+  body.theme-summer-pixel .session-card {
+    background: #f8fdff !important; border-radius: 0 !important;
+    border: 4px solid #1a3a5c !important;
+    box-shadow: 5px 5px 0 #1a3a5c !important;
+  }
+  body.theme-summer-pixel .session-card:hover { transform: none !important; box-shadow: 5px 5px 0 #1a3a5c !important; }
+  body.theme-summer-pixel .session-header {
+    background: #0288d1 !important; /* JS canvas가 위에 덮음 */
+    border-bottom: 4px solid #1a3a5c !important;
+    border-radius: 0 !important; position: relative !important; overflow: hidden !important;
+  }
+  body.theme-summer-pixel .session-title {
+    font-family: 'Press Start 2P', monospace !important;
+    color: #fff !important; font-size: 15px !important; font-weight: 900 !important;
+    text-shadow: 2px 2px 0 #0a2a4a !important; position: relative !important; z-index: 1 !important;
+  }
+  body.theme-summer-pixel .pin-icon { color: #fff !important; }
   body.theme-summer-pixel .session-time {
     border-radius: 0 !important; border: 3px solid #1a3a5c !important;
     font-family: 'Press Start 2P', monospace !important;
-    font-size: 14px !important; padding: 6px 12px !important;
-    background: #0288d1 !important; position: relative; z-index: 2;
+    font-size: 12px !important; padding: 6px 10px !important;
+    background: #0277bd !important; position: relative !important; z-index: 2 !important;
   }
   body.theme-summer-pixel .seat-card {
     background: #f0faff !important; border-radius: 0 !important;
     border: 3px solid #1a3a5c !important; box-shadow: none !important;
   }
   body.theme-summer-pixel .seat-card:hover { transform: none !important; }
+  body.theme-summer-pixel .seat-numbers { display: flex; gap: 3px; justify-content: center; margin-bottom: 8px; }
   body.theme-summer-pixel .seat-num {
     border-radius: 0 !important; background: #ffe082 !important;
     color: #1a3a5c !important; border: 2px solid #1a3a5c !important;
-    font-family: 'Press Start 2P', monospace !important; font-size: 10px !important;
+    font-family: 'Press Start 2P', monospace !important; font-size: 9px !important;
   }
   body.theme-summer-pixel .mic-num {
     border-radius: 0 !important; background: #80deea !important;
     color: #006064 !important; border: 2px solid #1a3a5c !important;
-    font-family: 'Press Start 2P', monospace !important; font-size: 10px !important;
+    font-family: 'Press Start 2P', monospace !important; font-size: 9px !important;
   }
   body.theme-summer-pixel .seat-name {
     font-family: 'Press Start 2P', monospace !important;
-    font-size: 14px !important; color: #1a3a5c !important; font-weight: 900 !important;
+    font-size: 11px !important; color: #1a3a5c !important; font-weight: 900 !important;
   }
   body.theme-summer-pixel .note-item {
     font-family: 'Press Start 2P', monospace !important;
-    font-size: 15px !important; color: #005a8a !important;
+    font-size: 12px !important; color: #005a8a !important;
   }
-  body.theme-summer-pixel .global-badge {
+  body.theme-summer-pixel .global-badge,
+  body.theme-summer-pixel .px-badge {
     border-radius: 0 !important; border: 3px solid #1a3a5c !important;
     font-family: 'Press Start 2P', monospace !important;
-    font-size: 15px !important; background: #f0faff !important; color: #1a3a5c !important;
+    font-size: 12px !important; background: #f0faff !important; color: #1a3a5c !important;
+    padding: 10px 14px !important;
   }
-  body.theme-summer-pixel .week-title {
-    font-family: 'Press Start 2P', monospace !important;
-    color: #1a3a5c !important; font-size: 27px !important;
-  }
-  body.theme-summer-pixel .week-sub {
-    font-family: 'Press Start 2P', monospace !important;
-    color: #0277bd !important; font-size: 15px !important;
-  }
-  body.theme-summer-pixel #page-public {
-    background: #dff3fb !important;
-  }
-  body.theme-summer-pixel .nav {
-    background: rgba(223,243,251,0.96) !important;
-    border-bottom: 4px solid #1a3a5c !important;
+  body.theme-summer-pixel .px-session-badges {
+    display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 0 0 4px;
   }
 
 </style>
@@ -1176,6 +1198,7 @@ async function init() {
   renderPublic();
   renderThemeSelector();
   showToast('✅ 불러오기 완료!');
+  if (state.theme === 'summer-pixel') { setTimeout(_drawSummerTitlebars, 200); }
 
   // memberStore가 비어있으면 백그라운드에서 한 번 더 시도
   if (Object.keys(memberStore).length === 0 && window._fbLoadMembers) {
@@ -1793,29 +1816,33 @@ function renderPublic() {
   const badgesHTML = badges.length
     ? `<div class="global-info mid-badges">${badges.map(b=>`<div class="global-badge"><span class="badge-icon">${b.icon}</span><span>${b.label}</span></div>`).join('')}</div>`
     : '';
-  const isPixel = state.theme === 'retro-pixel' || state.theme === 'summer-pixel';
-  const GAPS = [250, 250, 350];
+  const isRetroPixel = state.theme === 'retro-pixel';
+  const isSummerPixel = state.theme === 'summer-pixel';
+  const isPixel = isRetroPixel || isSummerPixel;
+  const RETRO_GAPS = [250, 250, 350];
   const totalSessions = state.sessions.length;
   state.sessions.forEach((sess, si) => {
     const card = buildSessionCard(sess, si);
     container.appendChild(card);
-    // 배지: 3번째(si===2) 또는 마지막 세션 아래에만 표시
-    const showBadge = isPixel && badges.length && (si === 2 || si === totalSessions - 1);
+    // retro: si===2 + 마지막, summer: 마지막만
+    const showBadge = badges.length && (
+      (isRetroPixel && (si === 2 || si === totalSessions - 1)) ||
+      (isSummerPixel && si === totalSessions - 1)
+    );
     if (showBadge) {
       const badgeRow = document.createElement('div');
       badgeRow.className = 'px-session-badges';
       badgeRow.innerHTML = badges.map(b=>`<div class="global-badge px-badge"><span class="badge-icon" style="font-style:normal">▶</span><span>${b.label}</span></div>`).join('');
       container.appendChild(badgeRow);
     }
-    // 세션 간 간격
+    // 세션 간 간격: retro만 큰 gap
     if (si < totalSessions - 1) {
       const gap = document.createElement('div');
-      const gapPx = isPixel ? (GAPS[si] || 250) : (si === 2 ? 350 : 250);
+      const gapPx = isRetroPixel ? (RETRO_GAPS[si] || 250) : (si === 2 ? 350 : 250);
       gap.style.height = gapPx + 'px';
       container.appendChild(gap);
     }
   });
-  // 레트로 픽셀 아닐 때 mid-badges
   if (!isPixel && badges.length) {
     const midDiv = document.createElement('div');
     midDiv.innerHTML = badgesHTML;
@@ -2735,16 +2762,17 @@ function _makeSummerSprite(type) {
 
 const _SUMMER_SPRITES = [0,1,2,3,4,5].map(i=>_makeSummerSprite(i));
 
-// 배경 픽셀 아트 (태양, 파라솔, 불가사리 등)
+// 배경 픽셀 아트 (화면 전체에 골고루)
 function _drawSummerBg() {
   const cv = document.createElement('canvas');
   cv.id = 'summer-bg-canvas';
   cv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;';
-  cv.width = window.innerWidth; cv.height = window.innerHeight;
+  const W=window.innerWidth, H=window.innerHeight;
+  cv.width=W; cv.height=H;
   document.body.insertBefore(cv, document.body.firstChild);
   const bgX = cv.getContext('2d'); bgX.imageSmoothingEnabled = false;
   _summerBgCanvas = cv;
-  const P=3;
+  const P=5; // 크기 키움 (3→5)
   function sun(ox,oy,col){
     [[1,0],[2,0],[1,6],[2,6],[0,1],[0,2],[6,1],[6,2],[0,4],[0,5],[6,4],[6,5]].forEach(([x,y])=>{bgX.fillStyle=col;bgX.fillRect((ox+x)*P,(oy+y)*P,P,P);});
     [[1,1],[2,1],[3,1],[4,1],[1,2],[2,2],[3,2],[4,2],[1,3],[2,3],[3,3],[4,3],[1,4],[2,4],[3,4],[4,4],[1,5],[2,5],[3,5],[4,5]].forEach(([x,y])=>{bgX.fillStyle='#fff176';bgX.fillRect((ox+x)*P,(oy+y)*P,P,P);});
@@ -2760,28 +2788,47 @@ function _drawSummerBg() {
     [[0,0],[1,0],[2,0],[5,0],[6,0],[7,0],[1,1],[2,1],[3,1],[4,1],[5,1],[6,1]].forEach(([x,y])=>{bgX.fillStyle='#66bb6a';bgX.fillRect((ox+x)*P,(oy+y)*P,P,P);});
     [[3,3],[4,3],[3,4],[4,4],[3,5],[4,5]].forEach(([x,y])=>{bgX.fillStyle='#a1887f';bgX.fillRect((ox+x)*P,(oy+y)*P,P,P);});
   }
-  [{f:sun,x:50,y:40,c:'#ffca28'},{f:umbrella,x:300,y:60},{f:star5,x:580,y:28,c:'#ff8a65'},
-   {f:sun,x:680,y:110,c:'#ffb300'},{f:palm,x:100,y:140},{f:star5,x:220,y:190,c:'#ff80ab'},
-   {f:umbrella,x:480,y:160},{f:star5,x:740,y:190,c:'#ffe082'},{f:sun,x:170,y:290,c:'#ffca28'},
-   {f:palm,x:600,y:260},{f:star5,x:400,y:300,c:'#ff8a65'}
-  ].forEach(p=>{const ox=Math.floor(p.x/P),oy=Math.floor(p.y/P);p.f(ox,oy,p.c);});
+  // 화면 크기 기반으로 골고루 배치
+  const cols=6, rows=5;
+  const items=[
+    {f:sun,c:'#ffca28'},{f:umbrella},{f:star5,c:'#ff8a65'},
+    {f:palm},{f:star5,c:'#ff80ab'},{f:sun,c:'#ffb300'},
+    {f:umbrella},{f:star5,c:'#ffe082'},{f:palm},
+    {f:sun,c:'#ffca28'},{f:star5,c:'#ff8a65'},{f:umbrella},
+    {f:star5,c:'#4fc3f7'},{f:sun,c:'#fff176'},{f:palm},
+  ];
+  items.forEach((item,i)=>{
+    const col=i%cols, row=Math.floor(i/cols);
+    const x=Math.floor((col+0.2+Math.random()*0.6)*(W/cols));
+    const y=Math.floor((row+0.1+Math.random()*0.5)*(H/rows));
+    const ox=Math.floor(x/P), oy=Math.floor(y/P);
+    item.f(ox,oy,item.c||'#ff8a65');
+  });
 }
 
-// 음료 낙하
+// 음료 낙하 (화면 전체, 크기 키움)
 function _startSummerRain() {
   _summerRainCanvas = document.createElement('canvas');
   _summerRainCanvas.id = 'summer-rain-canvas';
   _summerRainCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:1;pointer-events:none;';
   document.body.insertBefore(_summerRainCanvas, document.body.firstChild);
-  _summerRainCanvas.width = window.innerWidth; _summerRainCanvas.height = window.innerHeight;
-  const rx = _summerRainCanvas.getContext('2d'); rx.imageSmoothingEnabled = false;
+  const W=window.innerWidth, H=window.innerHeight;
+  _summerRainCanvas.width=W; _summerRainCanvas.height=H;
+  const rx = _summerRainCanvas.getContext('2d'); rx.imageSmoothingEnabled=false;
   const drops = [];
-  for(let i=0;i<22;i++){
+  // 화면 너비를 균등하게 나눠서 시작 X 위치 분산
+  for(let i=0;i<24;i++){
     const v=_SUMMER_SPRITES[i%6];
-    const renderSize=15+Math.random()*7;
-    drops.push({x:Math.random()*_summerRainCanvas.width,y:Math.random()*_summerRainCanvas.height,
-      speed:0.35+Math.random()*0.75,variant:v,renderSize,
-      rot:Math.random()*Math.PI*2,rotSpeed:0.005+Math.random()*0.009,alpha:0.55+Math.random()*0.35});
+    const renderSize=28+Math.random()*20; // 28~48px (시안과 동일하게 키움)
+    const startX = (i/24)*W + Math.random()*(W/24); // 화면 전체에 균등 분산
+    drops.push({
+      x:startX, y:Math.random()*H,
+      speed:0.4+Math.random()*0.9,
+      variant:v, renderSize,
+      rot:Math.random()*Math.PI*2,
+      rotSpeed:0.005+Math.random()*0.012,
+      alpha:0.6+Math.random()*0.3
+    });
   }
   let lastT=null;
   function drawRain(ts){
@@ -2790,7 +2837,10 @@ function _startSummerRain() {
     rx.clearRect(0,0,_summerRainCanvas.width,_summerRainCanvas.height);
     drops.forEach(d=>{
       d.y+=d.speed*dt; d.rot+=d.rotSpeed*dt;
-      if(d.y>_summerRainCanvas.height+40){d.y=-40;d.x=Math.random()*_summerRainCanvas.width;}
+      if(d.y>_summerRainCanvas.height+60){
+        d.y=-60;
+        d.x=Math.random()*_summerRainCanvas.width; // 리셋 시 랜덤 X
+      }
       rx.save();rx.globalAlpha=d.alpha;
       rx.translate(d.x+d.renderSize/2,d.y+d.renderSize/2);rx.rotate(d.rot);
       rx.drawImage(d.variant.img,-d.renderSize/2,-d.renderSize/2,d.renderSize,d.renderSize);
@@ -2888,11 +2938,11 @@ function _animSummerDrinks(ts){
 function _startSummerEffect() {
   _drawSummerBg();
   _startSummerRain();
-  setTimeout(()=>{
-    _drawSummerTitlebars();
-    _summerDrinkRAF=requestAnimationFrame(_animSummerDrinks);
-  }, 100);
   document.body.style.background='#dff3fb';
+  // 타이틀바는 renderPublic 후에 그려야 session-header가 존재함
+  setTimeout(()=>{ _drawSummerTitlebars(); }, 300);
+  setTimeout(()=>{ _drawSummerTitlebars(); }, 800); // 한번 더 (안전장치)
+  _summerDrinkRAF=requestAnimationFrame(_animSummerDrinks);
 }
 
 function _stopSummerEffect() {
